@@ -5,7 +5,6 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .profit import FeeSchedule
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -138,14 +137,10 @@ class Settings:
     min_cohort: int = 6
     assumed_shipping: float = 4.50      # used, and flagged, when eBay gives no shipping cost for a listing
     min_confidence: float = 0.75        # matcher confidence
-    resale_fee_pct: float = 0.0         # set ~0.13 if you flip; 0 for collectors
     auction_window_hours: float = 6.0   # only surface auctions ending within this window
 
     # live scans of the watchlist issue one eBay search per watched card; cap it to protect API quota
     max_watchlist_queries: int = 50
-
-    # what selling a card on eBay costs (fees + postage tiers); see profit.py for what is verified
-    fees: FeeSchedule = field(default_factory=FeeSchedule)
 
     # seller quality
     min_seller_feedback_pct: float = 98.0

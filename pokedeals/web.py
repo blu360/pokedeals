@@ -23,7 +23,6 @@ from .matcher import Matcher, choose_price
 from .models import Listing
 from .feed import Feed, record_calls
 from .pipeline import ZIP_KEY, ScanRow, evaluate_listing, make_conditions, make_source, scan_listings
-from .profit import DEFAULT_FEES, FeeSchedule, compute_profit
 
 STATIC = Path(__file__).parent / "static"
 MAX_FETCH = 1000   # most eBay listings one card comparison may pull (5 API calls at 200 per page)
@@ -65,19 +64,10 @@ def row_signature(row: ScanRow) -> wl.Signature | None:
     return wl.signature(c.name, c.local_id, c.official_count)
 
 
-def row_to_dict(row: ScanRow, watched: bool = False, fees: FeeSchedule = DEFAULT_FEES) -> dict:
+def row_to_dict(row: ScanRow, watched: bool = False) -> dict:
     l, p, v = row.listing, row.parsed, row.verdict
     d = v.deal
     card = d.match.card if d else None
-    resale = None
-    if d is not None:
-        # "buy at this cost, resell on eBay": at TCGplayer fair value, but never above what eBay sellers are
-        # actually asking for this card (when we saw enough of them), since that is where it would sell.
-        sale = d.fair_value if d.ebay_typical is None else min(d.fair_value, d.ebay_typical)
-        b = compute_profit(sale, d.total_cost, fees=fees, with_break_even=False)
-        resale = {"sale_price": sale, "capped_by_ebay": sale < d.fair_value, "profit": round(b.profit, 2),
-                  "roi": None if b.roi is None else round(b.roi, 3), "fees": round(b.total_fees, 2),
-                  "postage": b.postage, "postage_estimated": not b.postage_verified}
     return {
         "id": l.id,
         "title": l.title,
@@ -119,7 +109,7 @@ def row_to_dict(row: ScanRow, watched: bool = False, fees: FeeSchedule = DEFAULT
             "discount": d.discount, "margin": d.margin, "confidence": d.confidence,
             "ebay_typical": d.ebay_typical, "vs_ebay": d.vs_ebay, "cohort_size": d.cohort_size,
             "factor": round(d.factor, 3), "cond_sold": d.cond_sold, "thin_reason": d.thin_reason,
-            "condition": d.condition, "flags": list(d.flags), "resale": resale,
+            "condition": d.condition, "flags": list(d.flags),
         },
     }
 
@@ -157,7 +147,7 @@ def create_app(settings: Settings = SETTINGS, fixture: Path | None = None,
             conn.close()
 
     def to_dict(row: ScanRow, watched: bool = False) -> dict:
-        return row_to_dict(row, watched, settings.fees)
+        return row_to_dict(row, watched)
 
     @app.get("/")
     def index() -> FileResponse:
@@ -187,7 +177,6 @@ def create_app(settings: Settings = SETTINGS, fixture: Path | None = None,
                 "default_condition": settings.default_condition,
                 "min_seller_feedback_pct": settings.min_seller_feedback_pct,
                 "auction_window_hours": settings.auction_window_hours,
-                "resale_fee_pct": settings.resale_fee_pct,
             },
         }
 
@@ -257,33 +246,6 @@ def create_app(settings: Settings = SETTINGS, fixture: Path | None = None,
             raise HTTPException(404, f"unknown set id: {set_id}")
         page = catalog.set_cards(m.conn, set_id, sort, limit, offset)
         return {"cards": page.cards, "total": page.total, "offset": offset, "limit": limit, "sort": sort}
-
-    # ---- resale profit -----------------------------------------------------------------------
-
-    @app.get("/api/profit")
-    def profit(
-        sale: float = Query(ge=0, le=1_000_000),
-        cost: float = Query(default=0.0, ge=0, le=1_000_000),
-        shipping_charged: float = Query(default=0.0, ge=0, le=1_000),
-        tax_pct: float = Query(default=0.0, ge=0, le=25),
-        ad_pct: float = Query(default=0.0, ge=0, le=30),
-        packaging: float | None = Query(default=None, ge=0, le=100),
-        postage: float | None = Query(default=None, ge=0, le=500),
-    ) -> dict:
-        """What selling a card for `sale` on eBay nets, given what you paid (`cost`)."""
-        b = compute_profit(sale, cost, shipping_charged=shipping_charged, sales_tax_rate=tax_pct / 100,
-                           ad_rate=ad_pct / 100, packaging=packaging, postage=postage, fees=settings.fees)
-        f = settings.fees
-        return {
-            "breakdown": b.to_dict(),
-            "rules": {
-                "fvf_rate": f.fvf_rate, "fvf_cap": f.fvf_cap, "fvf_rate_above_cap": f.fvf_rate_above_cap,
-                "order_fee_threshold": f.order_fee_threshold, "order_fee_small": f.order_fee_small,
-                "order_fee_large": f.order_fee_large, "packaging": f.packaging,
-                "tiers": [{"upto": t.upto, "label": t.label, "cost": t.cost, "verified": t.verified,
-                           "note": t.note} for t in f.tiers],
-            },
-        }
 
     @app.get("/api/cards/{card_id}/listings")
     def card_listings(
@@ -435,7 +397,7 @@ def create_app(settings: Settings = SETTINGS, fixture: Path | None = None,
     @app.get("/api/deals")
     def deals(
         scope: Literal["all", "watchlist"] = "all",
-        sort: Literal["savings", "newest", "profit"] = "savings",
+        sort: Literal["savings", "newest"] = "savings",
         q: str = Query(default="", max_length=100),
         cats: str = Query(default="steal,deal", max_length=80),
         blocked: bool = False,
@@ -495,17 +457,9 @@ def create_app(settings: Settings = SETTINGS, fixture: Path | None = None,
         shown = [r for r in rows if show(r)]
         older = sum(show(r) for r in stale)        # only those a search would show under the chosen categories
 
-        def profit(r: ScanRow) -> float:
-            d = r.verdict.deal
-            if d is None:
-                return float("-inf")
-            sale = d.fair_value if d.ebay_typical is None else min(d.fair_value, d.ebay_typical)
-            return sale - d.total_cost
         shown.sort(key=listing_order)
         if sort == "newest":
             shown.sort(key=lambda r: first_seen.get(r.listing.id, ""), reverse=True)
-        elif sort == "profit":
-            shown.sort(key=profit, reverse=True)
         total_shown = len(shown)
         shown = shown[:800]                        # plenty for a page; the counts say how many matched
 

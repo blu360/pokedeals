@@ -19,7 +19,7 @@ class Deal:
     fair_value: float           # market * condition factor
     total_cost: float           # price + shipping
     discount: float             # (fair_value - total_cost) / fair_value
-    margin: float               # profit after resale fee, in USD
+    margin: float               # worth minus cost, in USD
     confidence: float
     flags: tuple[str, ...]
     # Filled in by the pipeline when enough other eBay listings of the same card were seen (see
@@ -153,7 +153,7 @@ def _evaluate(
         flags.append("shipping-assumed")
     total_cost = listing.price + shipping
     discount = (fair - total_cost) / fair
-    margin = fair * (1 - settings.resale_fee_pct) - total_cost
+    margin = fair - total_cost
 
     deal = Deal(listing, match, condition, round(fair, 2), round(total_cost, 2),
                 round(discount, 3), round(margin, 2), match.confidence, tuple(flags),

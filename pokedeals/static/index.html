@@ -146,8 +146,6 @@
   .linklike { background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
   .linklike:hover { color: var(--accent); text-decoration: underline; }
   td.thumb .linklike { cursor: zoom-in; display: block; }
-  .profit-good { color: var(--good); font-weight: 600; }
-  .profit-bad { color: var(--bad); font-weight: 600; }
 
   /* card detail dialog */
   dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 12px;
@@ -165,20 +163,6 @@
   .dlg h3 { margin-top: 18px; }
   .dlg .actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 0; }
 
-  /* resale calculator */
-  .calc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 12px; }
-  .calc-grid label { display: block; font-size: 12px; margin-bottom: 2px; }
-  .calc-grid input, .calc-grid select { width: 100%; }
-  .calc-out { margin-top: 12px; }
-  .calc-out table { min-width: 0; max-width: 460px; }
-  .calc-out td { padding: 4px 8px; border-bottom: 0; }
-  .calc-out td.num { text-align: right; }
-  .calc-out tr.total td { border-top: 1px solid var(--line); font-weight: 650; padding-top: 7px; }
-  .calc-out tr.minus td:first-child { color: var(--muted); }
-  .calc-warn { color: var(--warn); font-size: 12.5px; margin: 8px 0 0; }
-  details.rules { margin-top: 10px; font-size: 12.5px; color: var(--muted); }
-  details.rules table { min-width: 0; margin-top: 6px; }
-  details.rules th, details.rules td { padding: 4px 8px; }
   .compare-foot { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
   .coverage { background: var(--warn-bg); color: var(--warn); border-radius: 6px; padding: 6px 10px;
               margin-bottom: 10px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
@@ -405,7 +389,7 @@
     <button type="button" data-view="search" title="Look up any card and compare its eBay listings">Search cards</button>
     <button type="button" data-view="sets" title="Browse every card set">Sets</button>
     <button type="button" data-view="watchlist" title="Cards you want to keep an eye on">Watchlist <span id="navWatch" class="sub"></span></button>
-    <button type="button" data-view="tools" title="Your ZIP code, a profit calculator and more">Tools</button>
+    <button type="button" data-view="tools" title="Your ZIP code and a listing tester">Tools</button>
   </nav>
   <div id="banner" class="banner" hidden></div>
   <div id="envNote" class="banner" hidden></div>
@@ -435,9 +419,8 @@
           <button id="clearPrice" class="ghost small" type="button" hidden>clear</button>
         </label>
         <label>Sort <select id="dealSort" title="How the listings are ordered">
-          <option value="savings">Biggest savings</option>
           <option value="newest">Newest first</option>
-          <option value="profit">Biggest resale profit</option>
+          <option value="savings">Biggest savings</option>
         </select></label>
         <span id="liveQuery">
           <input id="q" type="text" placeholder="Filter, e.g. charizard" size="22" aria-label="Filter listings">
@@ -564,14 +547,6 @@
       </form>
       <div id="zipMsg" class="note" style="margin-top:6px"></div>
       <div class="note">Saved on this computer only. It is sent to eBay, and nowhere else, when listings are fetched.</div>
-    </section>
-
-    <section id="calcSection">
-      <div class="bar"><h2>Resale profit calculator</h2>
-        <span class="sub">What selling a card on eBay would net after fees and postage.</span>
-        <span class="spacer"></span>
-        <button id="calcToggle" class="ghost small" type="button" aria-expanded="true">Hide</button></div>
-      <div id="toolCalc"></div>
     </section>
 
     <section>
@@ -774,9 +749,8 @@ function renderRows(table, rows, { minCost = null, maxCost = null, emptyMsg = nu
       h("th", { class: "num", title: "Item price plus shipping" }, "You pay"),
       h("th", { class: "num", title: "What the card is worth: TCGplayer's market price for the card's condition" }, "Worth"),
       h("th", { title: "How much cheaper (or pricier) the listing is than what the card is worth" }, "Savings"),
-      h("th", { class: "num", title: "Profit if you bought this and resold it on eBay, after eBay's fees and postage" }, "If you resell"),
       h("th", { title: "How sure we are this listing is really that card" }, "Match"))),
-    h("tbody", {}, shown.length ? shown.map(rowEl) : h("tr", {}, h("td", { colspan: 8, class: "empty" }, empty))),
+    h("tbody", {}, shown.length ? shown.map(rowEl) : h("tr", {}, h("td", { colspan: 7, class: "empty" }, empty))),
   );
   return hidden;
 }
@@ -788,21 +762,6 @@ function ebayNote(v) {
   return h("div", { class: "note",
     title: `The typical eBay listing of this card in this condition costs ${money(v.ebay_typical)} (${v.cohort_size} compared)` },
     `${pct}% ${v.vs_ebay >= 0 ? "cheaper" : "pricier"} than other eBay listings`);
-}
-
-// Estimated profit from reselling on eBay after fees and postage (see /api/profit).
-function resaleCell(v) {
-  const rs = v && v.resale;
-  if (!rs) return h("span", { class: "sub" }, "—");
-  const good = rs.profit >= 0;
-  const price = rs.capped_by_ebay
-    ? `the typical eBay price ${money(rs.sale_price)} (TCGplayer says ${money(v.fair_value)}, but eBay sells this card lower)`
-    : `its worth, ${money(rs.sale_price)}`;
-  const tip = `Bought at ${money(v.total_cost)}, resold at ${price}: ` +
-    `eBay fees ${money(rs.fees)}, postage ${money(rs.postage)}${rs.postage_estimated ? " (estimate)" : ""}.`;
-  return h("span", { title: tip },
-    h("span", { class: good ? "profit-good" : "profit-bad" }, (good ? "+" : "−") + money(Math.abs(rs.profit))),
-    rs.roi != null ? h("div", { class: "note" }, `${Math.round(rs.roi * 100)}% return`) : null);
 }
 
 // Clicking a listing opens its popup (photo next to our card, and how we judged it); eBay is one click further.
@@ -849,7 +808,6 @@ function rowEl(r) {
       v && v.thin_reason && c ? h("div", { class: "note unsure", title: v.thin_reason + ". Check what it really sells for." },
         "⚠ few sales · ", soldLink(c, "linkish")) : null),
     h("td", { class: "vs" }, discountCell(v), ebayNote(v)),
-    h("td", { class: "num" }, resaleCell(v)),
     h("td", {}, v ? h("span", { title: `Match confidence ${v.confidence.toFixed(2)}` }, matchLabel(v.confidence)) : "—"));
 }
 
@@ -948,11 +906,6 @@ function listingTiles(r) {
       tiles.push(tile("time", condPending(r) ? "⏳" : "❔", "Condition", condPending(r) ? "Not checked yet" : "Unknown",
         (condPending(r) ? "We haven't asked eBay for the seller's stated condition yet. " : "We asked eBay and the seller didn't say. ") +
         `We value it as ${condName(v.condition)} as a placeholder, so the price shown may be off.`));
-    if (v.resale) {
-      const rs = v.resale;
-      tiles.push(tile(rs.profit >= 0 ? "good" : "bad", "💵", "If you resell", (rs.profit >= 0 ? "+" : "−") + money(Math.abs(rs.profit)),
-        `${rs.roi != null ? Math.round(rs.roi * 100) + "% return · " : ""}after eBay fees and postage`));
-    }
   }
   tiles.push(tile("fmt", "🧩", "Format",
     o.includes("AUCTION") && o.includes("FIXED_PRICE") ? "Auction or Buy It Now" : o.includes("AUCTION") ? "Auction" : "Buy It Now",
@@ -1331,7 +1284,7 @@ $("#clearPrice").addEventListener("click", () => {
 $("#refresh").addEventListener("click", checkNow);
 let filterTimer = null;
 $("#q").addEventListener("input", () => { clearTimeout(filterTimer); filterTimer = setTimeout(loadScan, 300); });
-$("#dealSort").value = ["savings", "newest", "profit"].includes(store.get("dealSort", "")) ? store.get("dealSort", "savings") : "savings";
+$("#dealSort").value = ["savings", "newest"].includes(store.get("dealSort", "")) ? store.get("dealSort", "newest") : "newest";
 $("#dealSort").addEventListener("change", () => { store.set("dealSort", $("#dealSort").value); loadScan(); });
 drawChips(null);
 
@@ -1563,8 +1516,7 @@ function compareRow(r) {
       h("div", { class: "note" }, `${money(r.price)} + ${r.shipping == null ? "?" : money(r.shipping)} shipping`)),
     h("td", { class: "vs" }, v ? underOver((v.market - v.total_cost) / v.market) : underOver(null),
       v ? h("div", { class: "note" }, `market ${money(v.market)}`) : null),
-    h("td", { class: "vs" }, v ? [discountCell(v), ebayNote(v)] : discountCell(null)),
-    h("td", { class: "num" }, resaleCell(v)));
+    h("td", { class: "vs" }, v ? [discountCell(v), ebayNote(v)] : discountCell(null)));
 }
 
 function comparePanel(card, st) {
@@ -1610,10 +1562,9 @@ function comparePanel(card, st) {
     h("thead", {}, h("tr", {}, h("th", {}, ""), h("th", {}, "Listing"),
       h("th", { class: "num", title: "Item price plus shipping" }, "You pay"),
       h("th", { title: "Compared with the card's TCGplayer market price (Near Mint)" }, "vs market"),
-      h("th", { title: "Compared with what the card is worth in the listing's condition" }, "Savings"),
-      h("th", { class: "num", title: "Profit if you resold it on eBay at its worth, after fees and postage" }, "If you resell"))),
+      h("th", { title: "Compared with what the card is worth in the listing's condition" }, "Savings"))),
     h("tbody", {}, rows.length ? rows.map(compareRow)
-      : h("tr", {}, h("td", { colspan: 6, class: "empty" },
+      : h("tr", {}, h("td", { colspan: 5, class: "empty" },
           d.rows.length ? "Nothing to show: every listing was left out (graded, lots, proxies, or suspicious). Use the boxes below to see them."
           : d.mode === "sample" ? "No sample listings for this card. The bundled sample data only covers a few cards; connect eBay for live listings."
           : "No listings found for this card right now."))))));
@@ -1653,18 +1604,6 @@ function comparePanel(card, st) {
 }
 
 // ---- tools tab --------------------------------------------------------------------------------
-function applyCalcHidden() {
-  const hide = store.get("hideCalc", "0") === "1";
-  $("#toolCalc").hidden = hide;
-  $("#calcToggle").textContent = hide ? "Show" : "Hide";
-  $("#calcToggle").setAttribute("aria-expanded", String(!hide));
-}
-$("#calcToggle").addEventListener("click", () => {
-  store.set("hideCalc", store.get("hideCalc", "0") === "1" ? "0" : "1");
-  applyCalcHidden();
-});
-applyCalcHidden();
-
 function showZip(zip) {
   const input = $("#zipInput");
   if (document.activeElement !== input) input.value = zip;
@@ -1710,107 +1649,7 @@ $("#tryForm").addEventListener("submit", async (e) => {
   } finally { btn.disabled = false; }
 });
 
-// ---- resale calculator ------------------------------------------------------------------------
-const signed = (n) => (n < 0 ? "−" : "") + "$" + Math.abs(n).toFixed(2);
-
-function rulesDetails(rules) {
-  let prev = null;
-  const rows = rules.tiers.map((t) => {
-    const range = t.upto == null ? `over $${prev.toFixed(2)}`
-      : prev == null ? `up to $${t.upto.toFixed(2)}`
-      : `$${(prev + 0.01).toFixed(2)} – $${t.upto.toFixed(2)}`;
-    if (t.upto != null) prev = t.upto;
-    return h("tr", {}, h("td", {}, range), h("td", {}, t.label, t.note ? h("div", { class: "note" }, t.note) : null),
-      h("td", { class: "num" }, money(t.cost)), h("td", {}, t.verified ? "eBay rate" : "estimate"));
-  });
-  return h("details", { class: "rules" },
-    h("summary", {}, "Fee and shipping rules used"),
-    h("div", {}, `Final value fee ${(rules.fvf_rate * 100).toFixed(2)}% of the total sale (item + shipping charged + sales tax) ` +
-      `up to ${money(rules.fvf_cap)}, ${(rules.fvf_rate_above_cap * 100).toFixed(2)}% above. ` +
-      `Per-order fee ${money(rules.order_fee_small)} up to ${money(rules.order_fee_threshold)}, ${money(rules.order_fee_large)} above. ` +
-      `Packaging default ${money(rules.packaging)} (estimate). Cards $20 and over cannot use the Standard Envelope.`),
-    h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "Card price"), h("th", {}, "Postage method"),
-      h("th", { class: "num" }, "Cost"), h("th", {}, "Basis"))), h("tbody", {}, rows)),
-    h("div", { class: "note" }, "Change estimates in pokedeals/profit.py. Confirm current rates on eBay before relying on them."));
-}
-
-function breakdownEls(b, rules) {
-  const row = (label, amount, cls = "", note = null) =>
-    h("tr", { class: cls }, h("td", {}, label, note ? h("div", { class: "note" }, note) : null),
-      h("td", { class: "num" }, amount));
-  const rows = [row("Sale price", money(b.sale_price))];
-  if (b.shipping_charged) rows.push(row("+ Shipping charged to buyer", money(b.shipping_charged)));
-  const taxed = Math.abs(b.fee_base - (b.sale_price + b.shipping_charged)) > 0.004;
-  rows.push(row(`− Final value fee (${(rules.fvf_rate * 100).toFixed(2)}%)`, "−" + money(b.final_value_fee), "minus",
-    taxed ? `charged on ${money(b.fee_base)} including sales tax` : null));
-  rows.push(row("− Per-order fee", "−" + money(b.order_fee), "minus"));
-  if (b.ad_fee) rows.push(row("− Promoted listing fee", "−" + money(b.ad_fee), "minus"));
-  rows.push(row("= Paid out by eBay", money(b.net_proceeds), "total"));
-  rows.push(row("− Postage", "−" + money(b.postage), "minus",
-    b.postage_label + (b.postage_verified ? "" : " · estimate")));
-  rows.push(row("− Packaging", "−" + money(b.packaging), "minus"));
-  if (b.cost_basis) rows.push(row("− What you paid", "−" + money(b.cost_basis), "minus"));
-  const good = b.profit >= 0;
-  rows.push(h("tr", { class: "total" },
-    h("td", {}, "= Profit", b.roi != null ? h("div", { class: "note" }, `${Math.round(b.roi * 100)}% return on what you paid`) : null),
-    h("td", { class: "num " + (good ? "profit-good" : "profit-bad") }, signed(b.profit))));
-  if (b.break_even_price != null)
-    rows.push(row("Break-even sale price", money(b.break_even_price), "", "lowest price that doesn't lose money"));
-  return [h("table", {}, h("tbody", {}, rows)),
-    ...b.warnings.map((w) => h("div", { class: "calc-warn" }, "⚠ " + w)), rulesDetails(rules)];
-}
-
-// A self-contained calculator. Every number comes from /api/profit, so the rules live in one place.
-function calculator({ sale = "", cost = "" } = {}) {
-  const el = {};
-  let timer = null, seq = 0;
-  const out = h("div", { class: "calc-out" });
-
-  const field = (key, label, value, placeholder) => {
-    el[key] = h("input", { type: "number", min: "0", step: "0.01", inputmode: "decimal",
-                           placeholder, "aria-label": label });
-    el[key].value = value;
-    el[key].addEventListener("input", schedule);
-    return h("div", {}, h("label", {}, label), el[key]);
-  };
-  const root = h("div", { class: "calc" },
-    h("div", { class: "calc-grid" },
-      field("sale", "Sell it for ($)", sale, "e.g. 50"),
-      field("cost", "What you paid ($)", cost, "0"),
-      field("shipping_charged", "Shipping you charge ($)", "", "0 = free shipping"),
-      field("tax_pct", "Buyer sales tax (%)", "", "0"),
-      field("ad_pct", "Promoted listing fee (%)", "", "0"),
-      field("packaging", "Packaging ($)", "", "default"),
-      field("postage", "Postage override ($)", "", "auto by card price")),
-    out);
-
-  function schedule() { clearTimeout(timer); timer = setTimeout(run, 150); }
-
-  async function run() {
-    const s = parseFloat(el.sale.value);
-    if (!Number.isFinite(s) || s < 0) {
-      out.replaceChildren(h("div", { class: "sub" }, "Enter a sale price to see the breakdown."));
-      return;
-    }
-    const p = new URLSearchParams({ sale: String(s) });
-    for (const k of ["cost", "shipping_charged", "tax_pct", "ad_pct", "packaging", "postage"]) {
-      const v = parseFloat(el[k].value);
-      if (Number.isFinite(v) && v >= 0) p.set(k, String(v));
-    }
-    const mine = ++seq;
-    try {
-      const r = await api("/api/profit?" + p);
-      if (mine === seq) out.replaceChildren(...breakdownEls(r.breakdown, r.rules));
-    } catch (e) {
-      if (mine === seq) out.replaceChildren(h("div", { class: "error" }, "Could not calculate: " + e.message));
-    }
-  }
-
-  schedule();
-  return { el: root, setSale(v) { el.sale.value = v; schedule(); } };
-}
-
-// ---- card detail dialog: large image, every variant's price, and the calculator ----------------
+// ---- card detail dialog: large image and every variant's price ---------------------------------
 const dlg = $("#cardDialog");
 dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });   // click on the backdrop
 
@@ -1820,16 +1659,6 @@ const VARIANT_NAMES = {
   "shadowless-holofoil": "Shadowless holo", "shadowless-normal": "Shadowless",
 };
 const variantName = (v) => VARIANT_NAMES[v] || v.replace(/-/g, " ");
-
-// The price shown for the card in lists (average of its regular prints), so the calculator starts from
-// the same number the user just saw. Falls back to a reverse / 1st Edition price if that is all it has.
-function representativePrice(prices) {
-  const priced = prices.filter((p) => p.market > 0);
-  const regular = priced.filter((p) => p.variant !== "reverse-holofoil" && !p.variant.startsWith("1st-edition")
-    && !p.variant.startsWith("shadowless"));
-  if (regular.length) return regular.reduce((s, p) => s + p.market, 0) / regular.length;
-  return priced.length ? Math.min(...priced.map((p) => p.market)) : null;
-}
 
 async function openCard(cardId, ctx = null) {
   const body = $("#cardDialogBody");
@@ -1935,23 +1764,6 @@ function renderCardDialog(data, ctx) {
     }
   });
 
-  // calculator: sale price defaults to the card's market price, "what you paid" is left for you
-  const rep = representativePrice(prices);            // the same number the card shows in lists
-  const calc = calculator({ sale: rep != null ? rep.toFixed(2) : "", cost: "" });
-  const sources = prices.filter((p) => p.market > 0);
-  const regularCount = sources.filter((p) => p.variant !== "reverse-holofoil" && !p.variant.startsWith("1st-edition")
-    && !p.variant.startsWith("shadowless")).length;
-  const picker = sources.length > 1 ? h("label", {}, "Use price of ",
-    (() => {
-      const options = sources.map((p) => h("option", { value: p.market.toFixed(2) }, `${variantName(p.variant)} · ${money(p.market)}`));
-      if (regularCount > 1)                           // an average is not any one print's price: offer it by name
-        options.unshift(h("option", { value: rep.toFixed(2) }, `Average of regular prints · ${money(rep)}`));
-      const sel = h("select", { "aria-label": "Variant to use as sale price" }, options);
-      sel.value = rep.toFixed(2);
-      sel.addEventListener("change", () => calc.setSale(sel.value));
-      return sel;
-    })()) : null;
-
   $("#cardDialogBody").replaceChildren(h("div", { class: "dlg" },
     picture,
     h("div", {},
@@ -1963,9 +1775,7 @@ function renderCardDialog(data, ctx) {
       h("h3", {}, "TCGplayer prices"), priceTable, sourceNote,
       h("h3", {}, "Price by condition"), conditionSection(card),
       h("div", { class: "actions" }, watchBtn, listBtn, soldLink(card, "ghost"), tcgplayerLink(prices)),
-      h("h3", {}, "If you sold this card on eBay"),
-      picker ? h("div", { style: "margin-bottom:10px" }, picker) : null,
-      calc.el)));
+      )));
 }
 
 // ---- sets tab ---------------------------------------------------------------------------------
@@ -2098,9 +1908,6 @@ $("#setBack").addEventListener("click", () => {
   $("#setDetail").hidden = true;
   $("#setsList").hidden = false;
 });
-
-// ---- tools: standalone calculator -------------------------------------------------------------
-$("#toolCalc").append(calculator().el);
 
 // ---- boot -------------------------------------------------------------------------------------
 (async () => {

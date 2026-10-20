@@ -121,37 +121,6 @@ def test_sets_endpoints(client):
     assert client.get("/api/sets/base1/cards", params={"sort": "random"}).status_code == 422
 
 
-def test_profit_endpoint(client):
-    r = client.get("/api/profit", params={"sale": 100, "cost": 40}).json()
-    b = r["breakdown"]
-    assert b["final_value_fee"] == 13.25 and b["order_fee"] == 0.4
-    assert b["postage"] == 5.0 and b["postage_verified"] is False
-    assert b["profit"] == 40.85 and b["break_even_price"] == 52.92
-    assert [t["upto"] for t in r["rules"]["tiers"]] == [19.99, 250.0, 750.0, None]
-    assert r["rules"]["fvf_rate"] == 0.1325
-
-    env = client.get("/api/profit", params={"sale": 8, "cost": 3}).json()["breakdown"]
-    assert env["postage"] == 0.84 and env["postage_verified"] is True and env["profit"] == 2.3
-
-    over = client.get("/api/profit", params={"sale": 100, "cost": 40, "postage": 4, "packaging": 1,
-                                             "ad_pct": 3, "shipping_charged": 5, "tax_pct": 8}).json()["breakdown"]
-    assert over["postage_overridden"] and over["ad_fee"] == 3.15      # 3% of (100 + 5)
-
-
-@pytest.mark.parametrize("params", [{"sale": -1}, {"sale": 5, "cost": -1}, {"sale": 5, "tax_pct": 99}, {}])
-def test_profit_endpoint_validates(client, params):
-    assert client.get("/api/profit", params=params).status_code == 422
-
-
-def test_listing_rows_carry_a_resale_estimate(client):
-    rows = {r["id"]: r for r in client.get("/api/scan").json()["rows"]}
-    # bought for $285 delivered, fair value $400: FVF 53.00 + order fee 0.40, postage 5.00, packaging 0.50
-    resale = rows["a"]["valuation"]["resale"]
-    assert resale["sale_price"] == 400.0 and resale["profit"] == 56.10
-    assert resale["postage_estimated"] is True
-    assert rows["c"]["valuation"] is None                  # graded slab: nothing to estimate
-
-
 def test_card_search_pages_through_every_match(client):
     p1 = client.get("/api/cards", params={"q": "charizard", "limit": 1, "offset": 0}).json()
     p2 = client.get("/api/cards", params={"q": "charizard", "limit": 1, "offset": 1}).json()

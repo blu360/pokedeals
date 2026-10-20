@@ -112,7 +112,7 @@ python -m pokedeals serve            # http://127.0.0.1:8765
 ```
 
 Five tabs. Clicking any card's image or name opens a larger image with every variant's TCGplayer price
-and a resale calculator (see below). Pokémon TCG Pocket (digital) cards are not part of the physical game
+(see below). Pokémon TCG Pocket (digital) cards are not part of the physical game
 and are never synced; `sync` also removes any that an older sync stored.
 
 - **Deals**: a carousel of the best deals at the top, then every tracked listing sorted into four **price
@@ -157,12 +157,6 @@ and are never synced; `sync` also removes any that an older sync stored.
   Each card has the same Listings button, so eBay is only queried when you ask for a specific card.
 - **Watchlist**: your watched cards, each with the same Listings comparison. In live mode a watchlist
   scan issues one eBay search per watched card (`Charizard 4/102`), capped by `max_watchlist_queries`.
-- **Resale profit** (Tools tab, the card dialog, and a "Resale" column on listings): net after eBay's
-  13.25% final value fee (2.35% above $7,500), the $0.30/$0.40 per-order fee, postage and packaging.
-  Postage depends on the card's price: under $20 the eBay Standard Envelope ($0.84, verified rate);
-  $20 and up needs tracked shipping, and over $750 signature confirmation. The Standard Envelope and fee
-  figures come from eBay's seller pages; the tracked-shipping and signature figures are **estimates**
-  (marked in the UI) because sources disagree. Edit them in `pokedeals/profit.py`.
 - **Tools**: "Try a listing" (paste a title + price to see how it is parsed, matched and valued) and
   the current thresholds.
 
@@ -206,7 +200,7 @@ The Deals tab is no longer a single search you wait for. While the app runs, a b
    older than 30 days, and, once there are more than 300 deals, the **oldest** deals (newer ones push them out).
 
 The page re-reads the stored deals every 20 seconds, so new deals appear on their own; "Check eBay now" runs a
-cycle immediately. Deals sort by biggest savings, newest, or biggest resale profit.
+cycle immediately. Deals sort by newest (the default) or biggest savings.
 
 ### eBay API calls
 
@@ -285,8 +279,7 @@ deals from 11.6% to 4.4%, almost all of it false positives that are now filtered
 6. **Gates**, each with a short label and a "Why?" explanation: match confidence; seller quality; auction
    window; discount ≥ 10% **and** ≥ $3; and an **eBay cross-check**: a deal must
    also beat the median of the other eBay listings of that card (put on a Near Mint footing), because
-   TCGplayer can price a card well above where eBay trades it. The resale-profit estimate is capped at that
-   typical eBay price for the same reason.
+   TCGplayer can price a card well above where eBay trades it.
 
 All thresholds live in `pokedeals/config.py`. Unknown shipping is assumed (and flagged), never treated as free.
 
@@ -302,7 +295,7 @@ python -m pytest
 |---|---|
 | TCGdex sync, SQLite | working, ~21k physical cards (digital TCG Pocket excluded) |
 | TCGplayer price feed | working, ~99.4% of cards priced, unit-tested |
-| Parser, matcher, scorer, resale calculator | working, unit-tested |
+| Parser, matcher, scorer | working, unit-tested |
 | `EbaySource` (live eBay) | working against **production** eBay: token, search, paging, condition labelling, shipping, parsing; matching audited on ~1,000 real listings |
 | Web UI (Deals, Search, Sets, Watchlist, Tools) | working on sample data and on live production eBay (checked in the browser) |
 | Fake / scam detection | working; checked on ~1,000 real listings (44 flagged) and a live Charizard search (68 of 197 flagged, nearly all new sellers at 90%+ off) |

@@ -8,7 +8,6 @@ import pytest
 from pokedeals.config import Settings
 from pokedeals.models import Listing
 from pokedeals.pipeline import scan_listings
-from pokedeals.web import row_to_dict
 
 TITLE = "Charizard 4/102 Base Set Holo NM"          # base1-4 in the shared test DB: TCGplayer market $400
 
@@ -90,16 +89,6 @@ def test_condition_is_put_on_a_common_footing_before_comparing(matcher):
     hp = next(r.verdict.deal for r in rows if r.listing.id == "m5")
     assert hp.condition == "HP" and hp.ebay_typical == pytest.approx(120.0, abs=1.0)     # typical *HP* price
     assert abs(hp.vs_ebay) < 0.02                                                        # so it is not a bargain
-
-
-def test_resale_estimate_never_assumes_a_price_above_what_ebay_sells_at(matcher):
-    rows = scan(matcher, [190, 200, 210, 220, 230, 240, 250, 260, 150])
-    d = next(r for r in rows if r.listing.price == 150)
-    out = row_to_dict(d)["valuation"]
-    assert out["resale"]["sale_price"] == 220.0 and out["resale"]["capped_by_ebay"] is True      # not TCGplayer's $400
-    small = scan(matcher, [200, 210, 220])                                                       # no cohort: TCGplayer
-    sale = row_to_dict(small[0])["valuation"]["resale"]
-    assert sale["sale_price"] == 400.0 and sale["capped_by_ebay"] is False
 
 
 def test_the_check_can_be_loosened(matcher):
