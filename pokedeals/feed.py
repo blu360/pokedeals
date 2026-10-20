@@ -35,12 +35,17 @@ from .tcgcsv import BASE_URL, refresh_prices
 log = logging.getLogger("pokedeals.feed")
 
 
+USER_AGENT = "pokedeals/0.1 (personal price lookup)"
+
+
 def latest_feed_stamp() -> str | None:
     """When the TCGplayer price feed (tcgcsv.com) last published, or None if it cannot be reached."""
     try:
-        r = httpx.get(f"{BASE_URL}/last-updated.txt", timeout=20)
+        # tcgcsv answers a request with no User-Agent with a 200 and a "blocked" message, so identify ourselves
+        r = httpx.get(f"{BASE_URL}/last-updated.txt", timeout=20, headers={"User-Agent": USER_AGENT})
         r.raise_for_status()
-        return r.text.strip() or None
+        stamp = r.text.strip()
+        return stamp if stamp[:2] == "20" else None
     except httpx.HTTPError:
         return None
 
