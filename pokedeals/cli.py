@@ -112,7 +112,32 @@ def cmd_serve(args) -> int:
 
     fixture = Path(args.fixture) if args.fixture else (SAMPLE_FIXTURE if args.sample else None)
     print(f"pokedeals UI: http://{args.host}:{args.port}  (Ctrl+C to stop)")
-    uvicorn.run(create_app(fixture=fixture), host=args.host, port=args.port, log_level="warning")
+    uvicorn.run(create_app(fixture=fixture, auto_setup=True), host=args.host, port=args.port, log_level="warning")
+    return 0
+
+
+def cmd_start(args) -> int:
+    """The everyday command: ask for the eBay keys the first time, then run the site, downloading the card
+    catalogue in the background on a first start (the page shows the progress)."""
+    import threading
+    import webbrowser
+
+    import uvicorn
+
+    from .config import Settings
+    from .onboarding import ask_zip, ensure_credentials
+    from .web import create_app
+
+    interactive = all(s is not None and s.isatty() for s in (sys.stdin, sys.stdout))    # both: NUL reports as a tty on Windows
+    live = ensure_credentials(interactive=interactive)
+    settings = Settings()                     # built after the keys were saved, so it sees them
+    if live and interactive:
+        ask_zip(settings)
+    url = f"http://{args.host}:{args.port}"
+    print(f"pokedeals is starting at {url}  (Ctrl+C to stop)")
+    if not args.no_browser and interactive:
+        threading.Timer(1.5, lambda: webbrowser.open(url)).start()
+    uvicorn.run(create_app(settings, auto_setup=True), host=args.host, port=args.port, log_level="warning")
     return 0
 
 
@@ -189,6 +214,12 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("ebay-check", help="verify the eBay credentials and show how real listings parse")
     p.set_defaults(fn=cmd_ebay_check)
+
+    p = sub.add_parser("start", help="first run: ask for eBay keys, download cards; then run the site")
+    p.add_argument("--host", default="127.0.0.1")
+    p.add_argument("--port", type=int, default=8765)
+    p.add_argument("--no-browser", action="store_true", help="do not open the page in a browser")
+    p.set_defaults(fn=cmd_start)
 
     p = sub.add_parser("serve", help="run the local web UI")
     p.add_argument("--host", default="127.0.0.1")

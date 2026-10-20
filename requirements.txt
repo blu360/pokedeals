@@ -1,4 +1,5 @@
 httpx>=0.27
 fastapi>=0.110
 uvicorn>=0.29
+keyring>=25        # keeps the eBay keys in the OS keyring (optional: a private file is the fallback)
 pytest>=8        # dev

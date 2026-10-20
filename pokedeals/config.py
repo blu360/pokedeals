@@ -5,6 +5,8 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from . import credentials
+
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -81,8 +83,9 @@ def load_keyset(path: Path | None = None) -> dict[str, str]:
 
 
 def _credential(env_name: str, keyset_key: str) -> str:
-    """Environment variable first, then keyset.txt."""
-    return os.environ.get(env_name) or load_keyset().get(keyset_key, "")
+    """Environment variable (or ..._FILE), then keys saved by the first-run prompt, then keyset.txt."""
+    return (credentials.env_value(env_name) or credentials.stored().get(keyset_key, "")
+            or load_keyset().get(keyset_key, ""))
 
 
 def detect_ebay_env(client_id: str, client_secret: str) -> str:

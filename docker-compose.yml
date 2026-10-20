@@ -1,0 +1,24 @@
+# docker compose up -d        then open http://localhost:8765
+# Put your eBay keys in a file named .env next to this one (copy .env.example). The first start downloads the
+# card catalogue (a few minutes); the page shows the progress.
+services:
+  pokedeals:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "127.0.0.1:8765:8765"     # this machine only: the site has no login, do not expose it to the internet
+    volumes:
+      - pokedeals-data:/data      # the card database, saved deals and your watchlist
+
+    # Prefer secrets over environment variables? Remove env_file, then:
+    #   environment:
+    #     EBAY_CLIENT_ID_FILE: /run/secrets/ebay_client_id
+    #     EBAY_CLIENT_SECRET_FILE: /run/secrets/ebay_client_secret
+    #   secrets: [ebay_client_id, ebay_client_secret]
+    # and define top-level secrets:  ebay_client_id: {file: ./ebay_client_id.txt}  (same for the secret).
+
+volumes:
+  pokedeals-data:

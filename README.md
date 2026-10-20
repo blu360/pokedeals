@@ -35,14 +35,55 @@ The running app keeps these current by itself: once an hour it asks the feed whe
 `python -m pokedeals prices` by hand (about 10 seconds, no TCGdex re-sync). The "prices as of" date in the header is
 the feed's own publish time.
 
-## Setup
+## Quick start
+
+You need Python 3.11 or newer and a free eBay developer account (the app asks for its two keys, see below).
+
+```bash
+python start.py
+```
+
+That is the whole installation. The first time it creates a private virtual environment, installs the requirements,
+asks for your eBay keys (and optionally your ZIP code), opens the site, and downloads every card and its price in
+the background while the page shows a progress bar (a few minutes, once). After that, `python start.py` just starts
+the site. Extra options go to `pokedeals start`: `--port 9000`, `--no-browser`, `--host 0.0.0.0`.
+
+> Keep the folder path short on Windows (the 260-character path limit bites deep project folders).
+
+### Where your eBay keys are kept
+
+The first-run prompt checks the keys with eBay, then stores them in your operating system's keyring (Windows
+Credential Manager, macOS Keychain, or the Linux Secret Service), or in an owner-only file `data/credentials.json`
+when the machine has no keyring. Looked up in this order, the first one found wins:
+
+1. environment variables `EBAY_CLIENT_ID` / `EBAY_CLIENT_SECRET` (and `EBAY_BUYER_ZIP`), or files named by
+   `EBAY_CLIENT_ID_FILE` / `EBAY_CLIENT_SECRET_FILE` (how Docker and Kubernetes secrets are mounted);
+2. the keyring or the private file written by the prompt;
+3. `keyset.txt` (the older file format, described below).
+
+The keys are never printed, logged, or sent anywhere except to eBay. To forget saved keys:
+`python -c "from pokedeals import credentials; credentials.forget()"`.
+
+### Docker
+
+```bash
+cp .env.example .env        # then put your eBay keys in .env
+docker compose up -d
+```
+
+Open http://localhost:8765. The first start downloads the catalogue (watch the progress bar); the database lives in
+the `pokedeals-data` volume, so updates (`docker compose up -d --build`) keep your watchlist and saved deals. The
+port is published on this machine only because the site has no login. `docker-compose.yml` shows how to use Docker
+secrets instead of environment variables. (The container setup has not been run on every platform yet; please report
+problems.)
+
+## Manual setup
 
 ```bash
 python -m venv .venv
-.venv/Scripts/pip install -r requirements.txt     # Windows
+.venv/Scripts/pip install -r requirements.txt     # Windows (use .venv/bin/pip elsewhere)
+python -m pokedeals start
 ```
-
-> Keep the venv path short on Windows (the 260-char path limit bites deep project folders).
 
 ## Usage
 

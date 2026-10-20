@@ -31,6 +31,10 @@ def no_ebay_credentials(monkeypatch, tmp_path):
     monkeypatch.setenv("POKEDEALS_KEYSET", str(tmp_path / "no-keyset.txt"))
     # no background feed thread and no real calls to tcgplayer.com from tests (they inject fakes when needed)
     monkeypatch.setenv("POKEDEALS_FEED", "0")
+    monkeypatch.setenv("POKEDEALS_NO_KEYRING", "1")                          # never the developer's real saved keys
+    monkeypatch.setenv("POKEDEALS_CREDENTIALS", str(tmp_path / "no-credentials.json"))
+    from pokedeals import credentials
+    credentials.stored.cache_clear()
     monkeypatch.setenv("POKEDEALS_TCG_CONDITIONS", "0")
     for var in ("EBAY_CLIENT_ID", "EBAY_CLIENT_SECRET", "EBAY_ENV"):
         monkeypatch.delenv(var, raising=False)

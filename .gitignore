@@ -5,6 +5,7 @@ data/*.db
 data/*.db-journal
 .env
 keyset.txt
+data/credentials.json
 *.key
 
 # local-only

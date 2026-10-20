@@ -355,6 +355,13 @@
   .note-banner.unc { background: var(--unc-bg); color: var(--unc); }
   .note-banner.unc .actions { margin: 8px 0 0; }
   .note-banner.unc a.btn { background: var(--unc); color: #fff; }
+
+  /* first-run screen */
+  .setup-screen { position: fixed; inset: 0; z-index: 50; background: var(--bg); display: grid; place-items: center; padding: 16px; }
+  .setup-card { max-width: 480px; width: 100%; background: var(--panel, var(--bg)); border: 1px solid var(--line);
+                border-radius: 14px; padding: 24px; }
+  .setup-bar { height: 12px; border-radius: 999px; background: var(--line); overflow: hidden; margin: 16px 0 8px; }
+  .setup-fill { height: 100%; width: 0; background: var(--accent, #e2512d); transition: width .6s; }
 </style>
 </head>
 <body>
@@ -1910,7 +1917,37 @@ $("#setBack").addEventListener("click", () => {
 });
 
 // ---- boot -------------------------------------------------------------------------------------
+// First start: the card catalogue is still downloading. Show how far it is, then load the site.
+async function waitForSetup() {
+  let s;
+  try { s = await api("/api/setup"); } catch (e) { return; }
+  if (s.state === "ready") return;
+  const bar = h("div", { class: "setup-bar" }, h("div", { class: "setup-fill" }));
+  const msg = h("div", { class: "sub" }, "");
+  const box = h("div", { class: "setup-screen" }, h("div", { class: "setup-card" },
+    h("h2", {}, "Setting up pokedeals"),
+    h("p", {}, "Downloading every Pokémon card and its price. This happens once and takes a few minutes. " +
+      "Deals start appearing as soon as it finishes."),
+    bar, msg));
+  document.body.append(box);
+  const fill = bar.firstChild;
+  for (;;) {
+    fill.style.width = s.percent + "%";
+    msg.textContent = s.state === "error" ? "" : `${s.percent}% · ${s.message}`;
+    if (s.state === "error") {
+      msg.replaceChildren(h("div", { class: "error" }, "Setup failed: " + s.error),
+        h("div", { class: "sub" }, "Check the internet connection and restart pokedeals to try again."));
+      return new Promise(() => {});
+    }
+    if (s.state === "ready") break;
+    await new Promise((r) => setTimeout(r, 2000));
+    try { s = await api("/api/setup"); } catch (e) { /* server busy; try again */ }
+  }
+  box.remove();
+}
+
 (async () => {
+  await waitForSetup();
   showView(location.hash.slice(1));
   try { await loadStatus(); } catch (e) { $("#banner").hidden = false; $("#banner").textContent = "Cannot reach the API: " + e.message; }
   try { await loadWatchlist(); } catch (e) { drawWatched(); }

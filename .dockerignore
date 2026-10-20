@@ -1,0 +1,12 @@
+.venv
+.git
+.claude
+__pycache__
+.pytest_cache
+data/*.db*
+data/credentials.json
+tests
+keyset.txt
+.env
+*.db
+*.log

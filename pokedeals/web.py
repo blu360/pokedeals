@@ -22,6 +22,7 @@ from .db import connect, set_setting
 from .matcher import Matcher, choose_price
 from .models import Listing
 from .feed import Feed, record_calls
+from .firstrun import FirstRun
 from .pipeline import ZIP_KEY, ScanRow, evaluate_listing, make_conditions, make_source, scan_listings
 
 STATIC = Path(__file__).parent / "static"
@@ -118,18 +119,24 @@ _AUTO = object()
 
 
 def create_app(settings: Settings = SETTINGS, fixture: Path | None = None,
-               conditions: TcgplayerConditions | None | object = _AUTO) -> FastAPI:
-    """`conditions`: the TCGplayer per-condition price reader (default: built from settings; None = off)."""
+               conditions: TcgplayerConditions | None | object = _AUTO, auto_setup: bool = False) -> FastAPI:
+    """`conditions`: the TCGplayer per-condition price reader (default: built from settings; None = off).
+    `auto_setup`: download the card catalogue in the background on first start (the page shows progress)."""
     source, mode = make_source(settings, fixture)
     if conditions is _AUTO:
         conditions = make_conditions(settings)
     # the background feed only makes sense against real eBay; sample mode just scores the fixture on request
     feed = Feed(settings, source, conditions) if mode == "live" and settings.feed_enabled else None
 
+    first_run = FirstRun(settings)
+
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
-        if feed is not None:
-            feed.start()
+        start_feed = feed.start if feed is not None else (lambda: None)
+        if auto_setup and first_run.needed():
+            first_run.start(on_ready=start_feed)       # the feed starts once there are cards to match against
+        else:
+            start_feed()
         yield
         if feed is not None:
             feed.stop()
@@ -152,6 +159,11 @@ def create_app(settings: Settings = SETTINGS, fixture: Path | None = None,
     @app.get("/")
     def index() -> FileResponse:
         return FileResponse(STATIC / "index.html")
+
+    @app.get("/api/setup")
+    def setup_progress() -> dict:
+        """How far the first-run download has got ('ready' once the app is usable)."""
+        return first_run.info()
 
     @app.get("/api/status")
     def status(m: Matcher = Depends(get_matcher)) -> dict:
