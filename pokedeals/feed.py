@@ -14,6 +14,7 @@ The web UI reads the latest snapshot, which is instant, rather than searching eB
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import threading
 import time
@@ -23,6 +24,7 @@ from typing import Any, Callable
 
 import httpx
 
+from . import backup, updates
 from . import listing_store as store
 from . import watchlist as wl
 from .condprices import TcgplayerConditions
@@ -127,9 +129,13 @@ class Feed:
         next_full, next_fast = 0.0, float("inf") if fast <= 0 else 0.0
         last_tick = time.time()
         next_prices = 0.0
+        next_chores = 0.0
         while not self._stop.is_set():
             now = time.time()
             try:
+                if now >= next_chores:
+                    next_chores = time.time() + 3600
+                    self.run_chores()
                 if now >= next_prices:
                     next_prices = time.time() + self.s.feed_price_check_minutes * 60
                     self.refresh_prices_if_stale()
@@ -172,6 +178,34 @@ class Feed:
         finally:
             conn.close()
         return min(max(wait, s.feed_fast_min_seconds), s.feed_fast_max_seconds)
+
+    def run_chores(self) -> None:
+        """Housekeeping that is cheap to ask about hourly: a daily backup of your data, a daily look for updates."""
+        s = self.s
+        try:
+            if s.backup_enabled and backup.due(s.db_path):
+                path = backup.make_backup(s.db_path, s.backup_keep)
+                self.status["last_backup"] = path.name
+        except Exception:                           # noqa: BLE001 - a full disk must not stop the feed
+            log.exception("backup failed")
+        if not s.update_check:
+            return
+        conn = connect(s.db_path)
+        try:
+            checked = get_setting(conn, "update_check_at")
+            stored = get_setting(conn, "update_check")
+            if stored:
+                self.status["update"] = json.loads(stored)
+            fresh = checked and (datetime.now(timezone.utc) - datetime.fromisoformat(checked)) < timedelta(hours=24)
+            if not fresh:
+                result = updates.check(s.update_repo)
+                self.status["update"] = result
+                set_setting(conn, "update_check", json.dumps(result))
+                set_setting(conn, "update_check_at", datetime.now(timezone.utc).isoformat())
+        except Exception:                           # noqa: BLE001
+            log.exception("update check failed")
+        finally:
+            conn.close()
 
     def refresh_prices_if_stale(self) -> bool:
         """Pull a newer TCGplayer price day if the feed has published one since ours. True when prices changed.

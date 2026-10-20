@@ -141,6 +141,31 @@ def cmd_start(args) -> int:
     return 0
 
 
+def cmd_backup(_args) -> int:
+    from .backup import make_backup
+    path = make_backup(SETTINGS.db_path, SETTINGS.backup_keep)
+    print(f"saved {path}")
+    return 0
+
+
+def cmd_restore(args) -> int:
+    from .backup import list_backups, restore_backup
+    path = Path(args.file) if args.file else None
+    if path is None:
+        found = list_backups(SETTINGS.db_path)
+        if not found:
+            print("no backups found")
+            return 1
+        path = Path(found[0]["path"])
+    print(f"restoring from {path}: {restore_backup(SETTINGS.db_path, path)}")
+    return 0
+
+
+def cmd_update(_args) -> int:
+    from .updates import apply_update
+    return 0 if apply_update() else 1
+
+
 def cmd_ebay_check(_args) -> int:
     """Check the eBay credentials end to end and show how real listings parse and match."""
     if not has_ebay_keys(SETTINGS):
@@ -214,6 +239,16 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("ebay-check", help="verify the eBay credentials and show how real listings parse")
     p.set_defaults(fn=cmd_ebay_check)
+
+    p = sub.add_parser("backup", help="save your watchlist and settings to data/backups now")
+    p.set_defaults(fn=cmd_backup)
+
+    p = sub.add_parser("restore", help="put a backup's watchlist and settings back (newest by default)")
+    p.add_argument("file", nargs="?", help="a userdata-*.json.gz file")
+    p.set_defaults(fn=cmd_restore)
+
+    p = sub.add_parser("update", help="pull the newest code and install new requirements (git checkouts)")
+    p.set_defaults(fn=cmd_update)
 
     p = sub.add_parser("start", help="first run: ask for eBay keys, download cards; then run the site")
     p.add_argument("--host", default="127.0.0.1")

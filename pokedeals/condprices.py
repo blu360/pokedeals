@@ -138,6 +138,11 @@ class TcgplayerConditions:
     def available(self) -> bool:
         return time.time() >= self._paused_until
 
+    def state(self) -> dict:
+        """For the Status page: is TCGplayer's site answering, or are we backing off?"""
+        wait = max(0, int(self._paused_until - time.time()))
+        return {"available": wait == 0, "retry_in_seconds": wait}
+
     def _failed(self) -> None:
         with self._lock:
             self._failures += 1

@@ -6,7 +6,8 @@
 The first time it creates a private virtual environment (.venv) and installs the requirements; every time it
 then runs `python -m pokedeals start` inside it. That asks for your eBay keys on the very first start,
 downloads the card catalogue in the background, and opens the site. Needs only Python 3.11 or newer.
-Extra arguments go to `pokedeals start` (for example `--port 9000` or `--no-browser`).
+Extra arguments go to `pokedeals start` (for example `--port 9000` or `--no-browser`). `python start.py update`
+updates the code; `backup` and `restore` save and reload your watchlist and settings.
 """
 from __future__ import annotations
 
@@ -21,6 +22,7 @@ ROOT = Path(__file__).resolve().parent
 VENV = ROOT / ".venv"
 REQUIREMENTS = ROOT / "requirements.txt"
 MIN_PYTHON = (3, 11)
+UTILITIES = ("update", "backup", "restore", "stats", "prices", "sync")      # run instead of starting the site
 
 
 def venv_python() -> Path:
@@ -59,8 +61,10 @@ def main(argv: list[str]) -> int:
         print(f"pokedeals needs Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]} or newer; this is {sys.version.split()[0]}.")
         return 1
     ensure_environment()
+    command = [argv[0]] if argv and argv[0] in UTILITIES else ["start", *argv]     # e.g. `python start.py update`
     try:
-        return subprocess.call([str(venv_python()), "-m", "pokedeals", "start", *argv], cwd=ROOT)
+        return subprocess.call([str(venv_python()), "-m", "pokedeals", *command, *(argv[1:] if command[0] != "start" else [])],
+                               cwd=ROOT)
     except KeyboardInterrupt:
         return 0
 

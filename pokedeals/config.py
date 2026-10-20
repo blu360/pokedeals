@@ -216,6 +216,11 @@ class Settings:
     feed_max_deals: int = 300                        # past this many deals the oldest are dropped
     feed_nondeal_hours: int = 48                     # listings that are not deals are forgotten after this (only when feed_browse_hours is 0: otherwise they go when they leave the browse window)
     feed_browse_hours: int = 24                      # the feed shows only listings first seen this recently; searching reaches back to feed_max_age_days
+    ebay_daily_limit: int = 5000                     # eBay's default daily allowance; the Status page shows usage against it
+    backup_enabled: bool = True                      # a daily backup of your watchlist and settings (a few KB)
+    backup_keep: int = 14
+    update_check: bool = True                        # once a day, see whether a newer version exists (changes nothing)
+    update_repo: str = "blu360/pokedeals"
     feed_max_age_days: int = 3                       # nothing is kept longer than this: we do not re-check for sales, so old deals expire
 
 

@@ -21,6 +21,8 @@ from .config import SETTINGS, Settings
 from .db import connect, set_setting
 from .matcher import Matcher, choose_price
 from .models import Listing
+from . import backup as backups
+from . import health
 from .feed import Feed, record_calls
 from .firstrun import FirstRun
 from .pipeline import ZIP_KEY, ScanRow, evaluate_listing, make_conditions, make_source, scan_listings
@@ -158,7 +160,22 @@ def create_app(settings: Settings = SETTINGS, fixture: Path | None = None,
 
     @app.get("/")
     def index() -> FileResponse:
-        return FileResponse(STATIC / "index.html")
+        return FileResponse(STATIC / "index.html", headers={"Cache-Control": "no-cache"})     # always the current page
+
+    @app.get("/api/health")
+    def health_report() -> dict:
+        """Everything the Status page shows: eBay usage against the daily limit, sources, backups, updates."""
+        conn = connect(settings.db_path)
+        try:
+            return health.build(settings, feed, conditions if mode == "live" else None, conn)
+        finally:
+            conn.close()
+
+    @app.post("/api/backup")
+    def backup_now() -> dict:
+        """Back up the watchlist and settings right now."""
+        path = backups.make_backup(settings.db_path, settings.backup_keep)
+        return {"made": path.name, "backups": backups.list_backups(settings.db_path)[:5]}
 
     @app.get("/api/setup")
     def setup_progress() -> dict:

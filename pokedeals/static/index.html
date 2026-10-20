@@ -362,6 +362,19 @@
                 border-radius: 14px; padding: 24px; }
   .setup-bar { height: 12px; border-radius: 999px; background: var(--line); overflow: hidden; margin: 16px 0 8px; }
   .setup-fill { height: 100%; width: 0; background: var(--accent, #e2512d); transition: width .6s; }
+
+  /* status page */
+  .meter { position: relative; display: flex; height: 20px; border-radius: 999px; background: var(--line); overflow: hidden; margin: 10px 0 6px; }
+  .meter .seg { height: 100%; min-width: 0; }
+  .meter .mark { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--text); opacity: .75; }
+  .meter-text { font-weight: 600; }
+  .meter-text.warn { color: var(--warn); } .meter-text.full { color: var(--bad); }
+  .meter-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+  .legend-item i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .legend-item i.mark-key { width: 3px; border-radius: 0; background: var(--text); }
+  .source { padding: 6px 0; } .source .dot { margin-right: 6px; }
+  .source.ok .dot { color: var(--good); } .source.bad .dot { color: var(--warn); }
+  .sub.api-warn { color: var(--warn); font-weight: 600; } .sub.api-full { color: var(--bad); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -396,9 +409,11 @@
     <button type="button" data-view="search" title="Look up any card and compare its eBay listings">Search cards</button>
     <button type="button" data-view="sets" title="Browse every card set">Sets</button>
     <button type="button" data-view="watchlist" title="Cards you want to keep an eye on">Watchlist <span id="navWatch" class="sub"></span></button>
+    <button type="button" data-view="status" title="eBay requests used today, data freshness and backups">Status <span id="navStatus" class="sub"></span></button>
     <button type="button" data-view="tools" title="Your ZIP code and a listing tester">Tools</button>
   </nav>
   <div id="banner" class="banner" hidden></div>
+  <div id="notice" class="banner" hidden></div>
   <div id="envNote" class="banner" hidden></div>
 
   <!-- DEALS -->
@@ -541,6 +556,30 @@
   </div>
 
   <!-- TOOLS -->
+  <div id="view-status" class="view" hidden>
+    <section>
+      <div class="bar"><h2>eBay requests today</h2><span class="sub" id="apiReset"></span></div>
+      <div id="apiMeter" class="meter" role="img"></div>
+      <div id="apiText" class="meter-text"></div>
+      <div class="meter-legend" id="apiLegend"></div>
+      <div class="note" id="apiHelp"></div>
+    </section>
+    <section>
+      <div class="bar"><h2>Data sources</h2><span class="sub" id="pricesLine"></span></div>
+      <div id="sourceList"></div>
+    </section>
+    <section>
+      <div class="bar"><h2>Backups</h2>
+        <span class="sub">Your watchlist and settings, saved once a day (a few KB). The card data is downloaded again as needed.</span>
+        <span class="spacer"></span><button id="backupNow" class="ghost small" type="button">Back up now</button></div>
+      <div id="backupList" class="sub"></div>
+    </section>
+    <section id="updateBox" hidden>
+      <div class="bar"><h2>Updates</h2></div>
+      <div id="updateText"></div>
+    </section>
+  </div>
+
   <div id="view-tools" class="view" hidden>
     <section id="zipSection" hidden>
       <div class="bar"><h2>Shipping destination</h2>
@@ -625,7 +664,7 @@ const store = {
 let appMode = "sample";
 
 // ---- tabs -------------------------------------------------------------------------------------
-const VIEWS = ["deals", "search", "sets", "watchlist", "tools"];
+const VIEWS = ["deals", "search", "sets", "watchlist", "status", "tools"];
 function showView(name) {
   if (!VIEWS.includes(name)) name = "deals";
   for (const v of VIEWS) {
@@ -633,6 +672,7 @@ function showView(name) {
     document.querySelector(`nav [data-view="${v}"]`).setAttribute("aria-current", v === name ? "page" : "false");
   }
   if (name === "search") $("#cardQ").focus();
+  if (name === "status") loadHealth();
   if (name === "sets" && !setsLoaded) { setsLoaded = true; loadSets(); }   // fetched on first visit only
 }
 let setsLoaded = false;
@@ -1917,6 +1957,73 @@ $("#setBack").addEventListener("click", () => {
 });
 
 // ---- boot -------------------------------------------------------------------------------------
+// ---- status page: eBay usage against the daily limit, data sources, backups, updates -------------
+const TASK_GROUPS = {
+  looking: { label: "Looking for new listings", color: "var(--accent)", tasks: ["fast_search", "full_search"] },
+  checking: { label: "Checking deals with eBay", color: "var(--good)", tasks: ["verify_new", "verify_routine", "verify_candidate", "verify_recheck"] },
+  you: { label: "Your clicks and searches", color: "var(--warn)", tasks: ["popup", "search", "other"] },
+};
+
+function drawApi(api_) {
+  const limit = api_.limit, used = api_.used;
+  const groups = Object.entries(TASK_GROUPS).map(([key, g]) => {
+    const n = g.tasks.reduce((t, k) => t + (api_.by_task[k] || 0), 0);
+    return { key, ...g, n };
+  });
+  const known = new Set(Object.values(TASK_GROUPS).flatMap((g) => g.tasks));
+  groups[2].n += Object.entries(api_.by_task).filter(([k]) => !known.has(k)).reduce((t, [, n]) => t + n, 0);
+  const meter = $("#apiMeter");
+  meter.replaceChildren(...groups.map((g) => h("div", { class: "seg", style: `width:${Math.min(100, g.n / limit * 100)}%;background:${g.color}`,
+    title: `${g.label}: ${g.n.toLocaleString()}` })),
+    h("div", { class: "mark", style: `left:${Math.min(100, api_.budget / limit * 100)}%`, title: `Daily budget the app keeps to: ${api_.budget.toLocaleString()}` }));
+  meter.setAttribute("aria-label", `${used} of ${limit} eBay requests used today`);
+  const pct = Math.round(used / limit * 100);
+  const text = $("#apiText");
+  text.className = "meter-text " + api_.level;
+  text.textContent = `${used.toLocaleString()} of ${limit.toLocaleString()} requests used today (${pct}%)` +
+    (api_.level === "full" ? ", the limit is reached: eBay will refuse requests until it resets" : api_.level === "warn" ? ", close to the limit" : "");
+  $("#apiLegend").replaceChildren(...groups.map((g) => h("span", { class: "legend-item" },
+    h("i", { style: `background:${g.color}` }), `${g.label} ${g.n.toLocaleString()}`)),
+    h("span", { class: "legend-item" }, h("i", { class: "mark-key" }), `budget ${api_.budget.toLocaleString()}`));
+  const resets = new Date(api_.resets_at);
+  $("#apiReset").textContent = `resets ${resets.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} (midnight UTC)`;
+  $("#apiHelp").textContent = `eBay allows ${limit.toLocaleString()} requests a day by default. The app keeps itself under its budget ` +
+    `(the line) so there is room for your own clicks. If you have a higher limit from eBay, set ebay_daily_limit in config.py.`;
+  const nav = $("#navStatus");
+  nav.textContent = pct + "%";
+  nav.className = "sub api-" + api_.level;
+}
+
+async function loadHealth() {
+  let d;
+  try { d = await api("/api/health"); } catch (e) { return; }
+  drawApi(d.api);
+  $("#pricesLine").textContent = d.prices.as_of ? `prices as of ${d.prices.as_of.slice(0, 10)}` : "";
+  $("#sourceList").replaceChildren(...d.sources.map((src) => h("div", { class: "source " + (src.ok ? "ok" : "bad") },
+    h("span", { class: "dot" }, src.ok ? "●" : "▲"), h("b", {}, src.name), " ", src.ok ? "working" : "having trouble",
+    src.detail ? h("div", { class: "note" }, src.detail) : null)));
+  $("#backupList").replaceChildren(d.backups.length
+    ? h("div", {}, `Latest: ${new Date(d.backups[0].made_at).toLocaleString()} · ${d.backups.length}${d.backups.length === 5 ? "+" : ""} kept`)
+    : "No backup yet.");
+  const bad = d.sources.filter((x) => !x.ok && x.detail);
+  const up = d.update;
+  const notice = $("#notice");
+  const msgs = [];
+  if (bad.length) msgs.push(...bad.map((x) => x.detail));
+  if (up && up.behind > 0) msgs.push(`A newer version is available (${plural(up.behind, "change")}). Run: python start.py update`);
+  notice.hidden = !msgs.length;
+  notice.textContent = msgs.join(" · ");
+  $("#updateBox").hidden = !up || (up.behind == null && !up.error);
+  if (up) $("#updateText").textContent = up.behind > 0 ? `${plural(up.behind, "update")} waiting. Run: python start.py update (Docker: docker compose up -d --build).`
+    : up.behind === 0 ? "You are on the latest version." : `Could not check for updates: ${up.error}.`;
+}
+$("#backupNow").addEventListener("click", async () => {
+  const b = $("#backupNow");
+  b.disabled = true;
+  try { await api("/api/backup", { method: "POST" }); await loadHealth(); } finally { b.disabled = false; }
+});
+setInterval(() => { if (!document.hidden) loadHealth(); }, 30000);
+
 // First start: the card catalogue is still downloading. Show how far it is, then load the site.
 async function waitForSetup() {
   let s;
@@ -1948,6 +2055,7 @@ async function waitForSetup() {
 
 (async () => {
   await waitForSetup();
+  loadHealth();
   showView(location.hash.slice(1));
   try { await loadStatus(); } catch (e) { $("#banner").hidden = false; $("#banner").textContent = "Cannot reach the API: " + e.message; }
   try { await loadWatchlist(); } catch (e) { drawWatched(); }
