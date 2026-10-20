@@ -27,6 +27,7 @@ import httpx
 
 from .textnorm import local_key, name_key
 
+USER_AGENT = "pokedeals/0.1 (personal price lookup)"      # tcgcsv blocks requests that do not identify themselves
 BASE_URL = "https://tcgcsv.com"
 POKEMON_CATEGORY = 3
 Progress = Callable[[str], None]
@@ -140,7 +141,7 @@ async def fetch_feed(
 ) -> Feed:
     """Download every Pokémon group. A group that keeps failing is skipped (and reported), not fatal."""
     client = client or httpx.AsyncClient(base_url=BASE_URL, timeout=60, follow_redirects=True,
-                                         headers={"User-Agent": "pokedeals/0.1 (personal price lookup)"})
+                                         headers={"User-Agent": USER_AGENT})
     sem = asyncio.Semaphore(concurrency)
     say = progress or (lambda m: None)
 

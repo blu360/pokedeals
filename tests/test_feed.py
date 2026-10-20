@@ -1,5 +1,6 @@
 """The live feed: ingest, remember, verify with getItem, and forget what sold or got old."""
 from dataclasses import replace
+from datetime import datetime, timedelta, timezone
 
 import httpx
 import pytest
@@ -10,6 +11,19 @@ from pokedeals.db import connect
 from pokedeals.ebay import ItemInfo, SearchResult
 from pokedeals.feed import Feed
 from pokedeals.models import Listing
+
+@pytest.fixture
+def early_utc(monkeypatch):
+    """The daily pacing depends on the time of day: pin the feed's clock to 06:00 UTC today so tests do not."""
+    from pokedeals import feed as feed_mod
+    pinned = datetime.now(timezone.utc).replace(hour=6, minute=0, second=0, microsecond=0)
+
+    class Early(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return pinned
+    monkeypatch.setattr(feed_mod, "datetime", Early)
+
 
 TITLE = "Charizard 4/102 Base Set Holo NM"          # base1-4 in the shared test DB: market $400
 
@@ -285,11 +299,11 @@ def test_item_checks_have_their_own_paced_share_of_the_daily_budget(settings):
     assert feed.info()["calls_today"] == 11
 
 
-def test_the_verification_allowance_grows_through_the_day_but_never_past_the_budget(settings):
+def test_the_verification_allowance_grows_through_the_day_but_never_past_the_budget(settings, early_utc):
     feed = make(settings)
     conn = connect(settings.db_path)
     allowed = feed._verify_allowance(conn)
-    assert 0 < allowed <= settings.feed_daily_call_budget - int(settings.feed_daily_call_budget * 0.6)
+    assert 0 < allowed <= settings.feed_daily_call_budget - int(settings.feed_daily_call_budget * settings.feed_search_share)
     feed.source.calls = 10_000
     feed._spend(conn, 0, "verify")                                         # far over budget
     assert feed._verify_allowance(conn) == 0
@@ -344,7 +358,7 @@ def test_a_failing_refresh_keeps_the_old_prices_and_reports_it(settings, monkeyp
     assert not f.refresh_prices_if_stale() and "price refresh failed" in f.status["error"]
 
 
-def test_a_new_deal_is_checked_even_when_the_days_paced_checks_are_used_up(settings):
+def test_a_new_deal_is_checked_even_when_the_days_paced_checks_are_used_up(settings, early_utc):
     """Deals nobody has checked yet sit on screen with a guessed condition: they must never wait for the pacing."""
     feed = make(settings, pages={"*": [listing(1, price=280.0)]},
                 items={"L1": ItemInfo(gone=False, card_condition="MP")})
@@ -391,7 +405,7 @@ def test_per_task_call_counts_are_kept(settings):
 
 # ---- the item-check queue is ordered by what a check is worth ------------------------------------------------
 
-def test_a_small_saving_is_not_checked_at_once_but_waits_for_the_paced_queue(settings):
+def test_a_small_saving_is_not_checked_at_once_but_waits_for_the_paced_queue(settings, early_utc):
     big = unstated(1, price=250.0)                                         # saves $150
     small = Listing(id="P1", title="Pikachu 58/102 Base Set", price=7.0, shipping=0.0,    # a $10 card: saves $3
                     seller_feedback_pct=99.5, seller_feedback_score=900)
@@ -417,3 +431,28 @@ def test_the_biggest_savings_are_checked_first(settings):
     feed.source.get_item = lambda i: (seen.append(i), orig(i))[1]
     feed.poll_once()
     assert seen == ["L5", "L4"]
+
+
+# ---- only what can be seen is worth an eBay check -------------------------------------------------------------
+
+def test_listings_too_old_to_browse_are_not_spent_item_checks(settings):
+    feed = make(settings, pages={"*": [unstated(1, price=250.0), unstated(2, price=250.0)]})
+    feed.poll_once()
+    conn = connect(settings.db_path)
+    conn.execute("UPDATE listings SET first_seen = ?, verified_at = NULL WHERE id = 'L2'",
+                 ((datetime.now(timezone.utc) - timedelta(hours=settings.feed_browse_hours + 2)).isoformat(),))
+    conn.execute("UPDATE listings SET verified_at = NULL WHERE id = 'L1'")
+    conn.commit()
+    conn.close()
+    feed.rebuild(fetch=False)
+    seen = []
+    orig = feed.source.get_item
+    feed.source.get_item = lambda i: (seen.append(i), orig(i))[1]
+    feed.poll_once()
+    assert "L1" in seen and "L2" not in seen
+
+
+def test_the_stamp_comparison_understands_both_formats_and_rejects_non_dates():
+    from pokedeals.feed import parse_stamp
+    assert parse_stamp("2026-10-18T20:05:40+0000") < parse_stamp("2026-10-18T22:54:45.902Z")
+    assert parse_stamp("Ahoy! Your User-Agent has been blocked.") is None and parse_stamp(None) is None

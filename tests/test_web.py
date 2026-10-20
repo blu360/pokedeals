@@ -443,6 +443,7 @@ def test_deals_endpoint_serves_the_feeds_stored_listings_best_first(db_path, mon
 
 
 def test_browsing_shows_only_the_last_day_but_a_search_reaches_back(db_path, monkeypatch):
+    from dataclasses import replace
     from datetime import datetime, timedelta, timezone
     from pokedeals.db import connect
     client, feed = feed_client(db_path, monkeypatch, [mk(1, 250.0), mk(2, 250.0)])
@@ -455,6 +456,13 @@ def test_browsing_shows_only_the_last_day_but_a_search_reaches_back(db_path, mon
     feed.rebuild(fetch=False)
     assert [r["id"] for r in client.get("/api/deals").json()["rows"]] == ["L1"]
     assert sorted(r["id"] for r in client.get("/api/deals", params={"q": "charizard"}).json()["rows"]) == ["L1", "L2"]
+    data = client.get("/api/deals").json()
+    assert data["count"] == 2 and data["older"] == 1                    # tracked = everything stored; one is older than a day
+    client.post("/api/watchlist", json={"card_id": "base1-4"})
+    watch = client.get("/api/deals", params={"scope": "watchlist"}).json()
+    assert sorted(r["id"] for r in watch["rows"]) == ["L1", "L2"]       # the watchlist is not cut to the last day
+    feed.s = replace(feed.s, feed_browse_hours=0)                         # 0 turns the limit off
+    assert sorted(r["id"] for r in client.get("/api/deals").json()["rows"]) == ["L1", "L2"]
 
 
 def test_categories_filter_what_is_returned_and_counts_cover_all_of_them(db_path, monkeypatch):

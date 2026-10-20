@@ -30,22 +30,27 @@ from .config import Settings
 from .db import connect, get_setting, set_setting
 from .matcher import Matcher
 from .pipeline import ScanRow, scan_listings
-from .tcgcsv import BASE_URL, refresh_prices
+from .tcgcsv import BASE_URL, USER_AGENT, refresh_prices
 
 log = logging.getLogger("pokedeals.feed")
 
 
-USER_AGENT = "pokedeals/0.1 (personal price lookup)"
+def parse_stamp(text: str | None) -> datetime | None:
+    """A price timestamp ('2026-10-18T20:05:40+0000' or '...45.902Z') as an aware datetime, or None if it is not one."""
+    try:
+        t = datetime.fromisoformat((text or "").strip())
+    except ValueError:
+        return None
+    return t if t.tzinfo else t.replace(tzinfo=timezone.utc)
 
 
 def latest_feed_stamp() -> str | None:
     """When the TCGplayer price feed (tcgcsv.com) last published, or None if it cannot be reached."""
     try:
-        # tcgcsv answers a request with no User-Agent with a 200 and a "blocked" message, so identify ourselves
         r = httpx.get(f"{BASE_URL}/last-updated.txt", timeout=20, headers={"User-Agent": USER_AGENT})
         r.raise_for_status()
         stamp = r.text.strip()
-        return stamp if stamp[:2] == "20" else None
+        return stamp if parse_stamp(stamp) else None          # a "blocked" message is a 200 too: not a date, not news
     except httpx.HTTPError:
         return None
 
@@ -177,8 +182,10 @@ class Feed:
         conn = connect(self.s.db_path)
         try:
             self.status["prices_checked_at"] = datetime.now(timezone.utc).isoformat()
-            stored = conn.execute("SELECT max(prices_updated) FROM cards").fetchone()[0]
-            latest = latest_feed_stamp()
+            # the stamps come in more than one format, so compare them as times rather than as text
+            stored = max(filter(None, (parse_stamp(r[0]) for r in conn.execute("SELECT DISTINCT prices_updated FROM cards"))),
+                         default=None)
+            latest = parse_stamp(latest_feed_stamp())
             if latest is None or (stored is not None and latest <= stored):
                 return False
             run_price_refresh(conn)
@@ -192,6 +199,13 @@ class Feed:
             conn.close()
 
     # ---- reading --------------------------------------------------------------------------------
+    def browse_cutoff(self) -> str:
+        """Listings first seen before this (an ISO time; '' = no limit) are kept for searching but not browsed. They are
+        most likely sold by now, so they are neither shown nor spent eBay checks on."""
+        if self.s.feed_browse_hours <= 0:
+            return ""
+        return (datetime.now(timezone.utc) - timedelta(hours=self.s.feed_browse_hours)).isoformat()
+
     def snapshot(self) -> Snapshot:
         with self._lock:
             return self._snap
@@ -377,6 +391,8 @@ class Feed:
         instead (`feed_max_age_days`).
         """
         limit = self.s.feed_verify_per_cycle if limit is None else limit
+        cutoff = self.browse_cutoff()
+        rows = [r for r in rows if self._pending.get(r.listing.id, ("9", None))[0] >= cutoff]    # only what can be seen
         def checked(r: ScanRow) -> str | None:
             return self._pending.get(r.listing.id, (None, None))[1]
 

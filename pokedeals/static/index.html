@@ -1289,6 +1289,7 @@ function drawScan() {
   const cut = lastScan.truncated || [];
   $("#summary").textContent = `${plural(lastScan.deals, "steal/deal")} right now` +
     (c.uncertain ? ` (+ ${c.uncertain} uncertain)` : "") + ` · ${lastScan.count.toLocaleString()} listings tracked` +
+    (lastScan.older ? ` · ${lastScan.older.toLocaleString()} older than a day (search to see them)` : "") +
     (hidden ? ` · ${hidden} hidden by your filters` : "") +
     (cut.length ? ` · ⚠ ${plural(cut.length, "search")} cut off at the fetch cap` : "");
   $("#summary").title = cut.map((t) => `“${t.query}”: fetched ${t.fetched} of ${t.total.toLocaleString()}`).join("\n");
