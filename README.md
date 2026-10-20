@@ -35,6 +35,29 @@ The running app keeps these current by itself: once an hour it asks the feed whe
 `python -m pokedeals prices` by hand (about 10 seconds, no TCGdex re-sync). The "prices as of" date in the header is
 the feed's own publish time.
 
+## Data sources and limits
+
+pokedeals uses only free sources, each with its own rules. Please read these before relying on it or sharing it.
+
+| Source | What for | Cost | Things to know |
+|---|---|---|---|
+| [eBay Browse API](https://developer.ebay.com/api-docs/buy/browse/overview.html) | live listings | free, your own keys | 5,000 requests a day by default (raised by eBay's Application Growth Check). Sold-listing data is **not** available to ordinary keys, so the app links to eBay's sold listings instead. eBay's API licence governs what you may do with listing data; the app is meant for your own use. |
+| [TCGdex](https://tcgdex.dev) | the card catalogue (names, sets, numbers, images) | free | Community project: be gentle, and the first sync is the only heavy download. |
+| [tcgcsv.com](https://tcgcsv.com) | daily TCGplayer market prices | free | A third-party mirror run by one person; it asks every client to identify itself, which the app does. It updates once a day (about 20:05 UTC). |
+| TCGplayer's website endpoints | prices **by condition** (sales history) and the cheapest listing | free, **unofficial** | These are the calls TCGplayer's own pages make, not a documented API. They can change or refuse requests at any time. Results are cached for 12 hours and the app backs off for 10 minutes after repeated failures. |
+
+**When a source fails.** The app keeps working with less: without the per-condition prices it values a card from the
+daily feed price and marks the number as an estimate; without the feed it keeps the last prices it had. The
+**Status** tab shows each source as working or having trouble, and a notice appears on the Deals page.
+
+**Optional extra sources.** Paid or keyed services for data the free sources lack (graded-card prices first) plug in
+through `pokedeals/pricesources.py`; none is enabled by default and none is needed. The module's docstring says how
+to add one.
+
+**What stays on your computer.** Your eBay keys, notification secrets, watchlist, ZIP code and saved listings are
+stored locally. The only outside requests are to the sources above and to the notification services you switch on
+(plus, once a day, a check of this project's GitHub page for a newer version; turn it off with `update_check`).
+
 ## Quick start
 
 You need Python 3.11 or newer and a free eBay developer account (the app asks for its two keys, see below).
@@ -152,7 +175,7 @@ Check your daily call limit on developer.ebay.com.
 python -m pokedeals serve            # http://127.0.0.1:8765
 ```
 
-Five tabs. Clicking any card's image or name opens a larger image with every variant's TCGplayer price
+Six tabs. Clicking any card's image or name opens a larger image with every variant's TCGplayer price
 (see below). Pokémon TCG Pocket (digital) cards are not part of the physical game
 and are never synced; `sync` also removes any that an older sync stored.
 
@@ -198,8 +221,18 @@ and are never synced; `sync` also removes any that an older sync stored.
   Each card has the same Listings button, so eBay is only queried when you ask for a specific card.
 - **Watchlist**: your watched cards, each with the same Listings comparison. In live mode a watchlist
   scan issues one eBay search per watched card (`Charizard 4/102`), capped by `max_watchlist_queries`.
-- **Tools**: "Try a listing" (paste a title + price to see how it is parsed, matched and valued) and
-  the current thresholds.
+- **Status**: a bar of the eBay requests used today against the daily limit (split into looking for listings, checking
+  deals, and your own clicks, with the app's own budget marked), whether each data source is working, when prices were
+  last updated, your backups, and whether a newer version exists. The percentage is also shown on the tab.
+  A backup of your watchlist and settings (a few KB) is made once a day (`python start.py backup` / `restore`).
+  `python start.py update` pulls the newest code; nothing updates itself.
+- **Tools**: your ZIP, **Notifications**, "Try a listing" (paste a title + price to see how it is parsed, matched and
+  valued) and the current thresholds. Notifications: choose steals only or steals and deals, then turn on any of
+  desktop pop-ups (while the page is open in a tab), email (any SMTP server), Discord (webhook), Telegram (bot) and
+  ntfy.sh. Each has a "Send a test" button. Webhook addresses, tokens and passwords are stored in the keyring, never
+  shown again, and can also be given as `POKEDEALS_DISCORD_WEBHOOK`, `POKEDEALS_TELEGRAM_TOKEN`, `POKEDEALS_NTFY_TOPIC`
+  or `POKEDEALS_SMTP_PASSWORD` environment variables (handy for Docker). Each deal is announced once, only if it was
+  first seen in the last half hour, so switching a channel on does not flood you with old ones.
 
 Paging and "is this everything?":
 
@@ -338,9 +371,11 @@ python -m pytest
 | TCGplayer price feed | working, ~99.4% of cards priced, unit-tested |
 | Parser, matcher, scorer | working, unit-tested |
 | `EbaySource` (live eBay) | working against **production** eBay: token, search, paging, condition labelling, shipping, parsing; matching audited on ~1,000 real listings |
-| Web UI (Deals, Search, Sets, Watchlist, Tools) | working on sample data and on live production eBay (checked in the browser) |
+| Web UI (Deals, Search, Sets, Watchlist, Status, Tools) | working on sample data and on live production eBay (checked in the browser) |
 | Fake / scam detection | working; checked on ~1,000 real listings (44 flagged) and a live Charizard search (68 of 197 flagged, nearly all new sellers at 90%+ off) |
-| Alerts (Discord/email), scheduler | not started |
+| Notifications (desktop, email, Discord, Telegram, ntfy) | working, unit-tested; channels other than the page's desktop pop-ups need your own accounts, so they are tested against fakes |
+| Status page, daily backups, update check, Docker, one-command start | working; the Docker files have not been run on every platform |
+| Graded cards | not started: the plug-in interface exists, no source is wired in |
 
 ## Known limits
 

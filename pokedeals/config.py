@@ -221,6 +221,7 @@ class Settings:
     backup_keep: int = 14
     update_check: bool = True                        # once a day, see whether a newer version exists (changes nothing)
     update_repo: str = "blu360/pokedeals"
+    price_sources: tuple[str, ...] = ()              # optional extra price sources, none by default (see pricesources.py)
     feed_max_age_days: int = 3                       # nothing is kept longer than this: we do not re-check for sales, so old deals expire
 
 
