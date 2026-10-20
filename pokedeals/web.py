@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime, timedelta, timezone
 import statistics
 import time
 from pathlib import Path
@@ -462,9 +463,13 @@ def create_app(settings: Settings = SETTINGS, fixture: Path | None = None,
         if scope == "watchlist":
             rows = [r for r in rows if watched[r.listing.id]]
         needle = q.strip().lower()
-        if needle:
+        if needle:                                 # a search reaches back through everything still stored
             rows = [r for r in rows if needle in r.listing.title.lower()
                     or (r.match.card is not None and needle in r.match.card.name.lower())]
+        elif feed is not None and settings.feed_browse_hours > 0:
+            # browsing shows only what is fresh: older listings have most likely sold, and stay findable by search
+            cutoff = (datetime.now(timezone.utc) - timedelta(hours=settings.feed_browse_hours)).isoformat()
+            rows = [r for r in rows if first_seen.get(r.listing.id, "9") >= cutoff]
         if not intl:                               # listings from abroad cost more to ship and are slower
             rows = [r for r in rows if (r.listing.item_country or "US").upper() == "US"]
 

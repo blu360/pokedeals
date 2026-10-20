@@ -442,6 +442,21 @@ def test_deals_endpoint_serves_the_feeds_stored_listings_best_first(db_path, mon
     assert [r["id"] for r in client.get("/api/deals", params={"q": "nothing-like-this"}).json()["rows"]] == []
 
 
+def test_browsing_shows_only_the_last_day_but_a_search_reaches_back(db_path, monkeypatch):
+    from datetime import datetime, timedelta, timezone
+    from pokedeals.db import connect
+    client, feed = feed_client(db_path, monkeypatch, [mk(1, 250.0), mk(2, 250.0)])
+    feed.poll_once()
+    old = (datetime.now(timezone.utc) - timedelta(hours=30)).isoformat()
+    conn = connect(db_path)
+    conn.execute("UPDATE listings SET first_seen = ? WHERE id = 'L2'", (old,))
+    conn.commit()
+    conn.close()
+    feed.rebuild(fetch=False)
+    assert [r["id"] for r in client.get("/api/deals").json()["rows"]] == ["L1"]
+    assert sorted(r["id"] for r in client.get("/api/deals", params={"q": "charizard"}).json()["rows"]) == ["L1", "L2"]
+
+
 def test_categories_filter_what_is_returned_and_counts_cover_all_of_them(db_path, monkeypatch):
     # market $400: 250 = 37% off (steal), 330 = 17% (deal), 395 = fair, 450 = 12% over (overpriced)
     client, feed = feed_client(db_path, monkeypatch, [mk(1, 250.0), mk(2, 330.0), mk(3, 395.0), mk(4, 450.0)])
