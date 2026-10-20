@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+.pytest_cache/
+data/*.db
+data/*.db-journal
+.env
+keyset.txt
+*.key
+
+# local-only
+.claude/
+data/*.db-wal
+data/*.db-shm
+*.log

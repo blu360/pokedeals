@@ -1,0 +1,2113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pokedeals</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1b1f24; --muted: #6a737d; --line: #e1e4e8;
+    --accent: #2f6fed; --good: #1a7f37; --good-bg: #e6f4ea; --bad: #b42318; --warn: #9a6700; --warn-bg: #fff4d6;
+    --sus: #b42318; --sus-bg: #fde8e6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1216; --panel: #181c22; --text: #e6e9ed; --muted: #8b949e; --line: #2a313a;
+      --accent: #6c9cff; --good: #56d364; --good-bg: #12261a; --bad: #ff7b72; --warn: #e3b341; --warn-bg: #2d2411;
+      --sus: #ff7b72; --sus-bg: #3a1a18;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 48px; }
+  header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  h1 { font-size: 20px; margin: 0; }
+  h2 { font-size: 15px; margin: 0; }
+  h3 { font-size: 13px; margin: 16px 0 4px; }
+  .sub { color: var(--muted); font-size: 12.5px; }
+  .badge { font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 2px 8px; border-radius: 999px;
+           border: 1px solid var(--line); text-transform: uppercase; }
+  .badge.live { color: var(--good); border-color: var(--good); }
+  .badge.sample { color: var(--warn); border-color: var(--warn); }
+
+  nav { display: flex; gap: 4px; margin: 14px 0 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  nav button { background: transparent; color: var(--muted); border: 0; border-bottom: 2px solid transparent;
+               border-radius: 0; padding: 8px 14px; margin-bottom: -1px; font-weight: 600; }
+  nav button:hover { color: var(--text); }
+  nav button[aria-current="page"] { color: var(--text); border-bottom-color: var(--accent); }
+  .view[hidden] { display: none; }
+
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+            margin-top: 16px; padding: 14px 16px; }
+  .bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  .spacer { flex: 1; }
+  .banner { background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: 8px 12px; margin-top: 12px; }
+  .error { color: var(--bad); }
+  button { font: inherit; background: var(--accent); color: #fff; border: 0; border-radius: 6px;
+           padding: 6px 14px; cursor: pointer; }
+  button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+  button.small { padding: 3px 9px; font-size: 12.5px; }
+  button:disabled { opacity: .6; cursor: default; }
+  input[type=text], input[type=number] { font: inherit; color: var(--text); background: var(--bg);
+           border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+  label { color: var(--muted); }
+  a { color: var(--accent); }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 640px; }
+  th { text-align: left; font-weight: 600; font-size: 12px; color: var(--muted); padding: 6px 8px;
+       border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.vs { white-space: nowrap; }
+  tr.deal td:first-child { box-shadow: inset 3px 0 0 var(--good); }
+  tr.rejected { opacity: .72; }
+  .pill { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .pill.deal { background: var(--good-bg); color: var(--good); }
+  .pill.no { background: var(--bg); color: var(--muted); border: 1px solid var(--line); font-weight: 600; }
+  .pill.sus { background: var(--sus-bg); color: var(--sus); }
+  tr.sus td:first-child { box-shadow: inset 3px 0 0 var(--sus); }
+  tr.sus { background: color-mix(in srgb, var(--sus-bg) 35%, transparent); }
+  td.listing { min-width: 300px; }
+  .feedline { margin: -4px 0 10px; }
+  a.btn { display: inline-block; font: inherit; background: var(--accent); color: #fff; border-radius: 6px;
+          padding: 6px 14px; text-decoration: none; }
+  a.btn.ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+  a.btn.small { padding: 3px 9px; font-size: 12.5px; }
+  .ldlg { padding: 18px; }
+  .ldlg h2 { font-size: 16px; line-height: 1.35; }
+  .ldlg h2 .title { display: inline; }
+  .ldlg h3 { margin: 14px 0 6px; }
+  .compare-photos { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; }
+  .compare-photos > div, .compare-photos figure { min-width: 0; margin: 0; }
+  figure.photo img { width: 100%; height: min(60vh, 440px); border-radius: 10px; background: var(--bg); display: block;
+                     object-fit: contain; border: 1px solid var(--line); }
+  figure.photo .noimg { height: min(60vh, 440px); }
+  figure.photo figcaption { color: var(--muted); font-size: 12.5px; margin-top: 4px; }
+  .strip { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .strip img { border-radius: 4px; object-fit: cover; border: 1px solid var(--line); }
+  .ldlg .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 8px; }
+  .ldlg .cols > div { min-width: 0; }
+  table.facts { min-width: 0; width: auto; }
+  table.facts td, table.facts th { padding: 3px 12px 3px 0; border: 0; font-size: 13px; }
+  table.facts td.k, table.facts th { color: var(--muted); }
+  .ldlg .actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 2px; }
+  .ldlg .why-box { max-width: none; margin: 0; }
+  @media (max-width: 720px) { .compare-photos, .ldlg .cols { grid-template-columns: 1fr; } }
+  .live-dot { color: var(--good); }
+  .pill.new { background: var(--accent); color: #fff; margin-left: 4px; font-size: 10px; padding: 1px 6px; }
+  .why-btn { background: none; border: 0; padding: 0; margin-left: 4px; color: var(--accent); font: inherit;
+             font-size: 12px; cursor: pointer; text-decoration: underline dotted; }
+  .why-btn.warn { color: var(--warn); }
+  .why-box { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px;
+             margin: 6px 0 2px; font-size: 12.5px; color: var(--text); max-width: 560px; }
+  .why-box[hidden] { display: none; }
+  .why-box ul { margin: 4px 0 6px; padding-left: 18px; }
+  .why-head { font-weight: 650; margin-top: 6px; }
+  .why-head:first-child { margin-top: 0; }
+  .why-head.good { color: var(--good); } .why-head.bad { color: var(--sus); } .why-head.warn { color: var(--warn); }
+  .intro { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin-top: 16px; padding: 10px 16px; }
+  .intro summary { cursor: pointer; font-weight: 650; }
+  .intro ul { margin: 8px 0 4px; padding-left: 20px; }
+  .intro li { margin: 3px 0; }
+  .tagline { color: var(--muted); font-size: 13px; margin: 2px 0 0; }
+  .title a { color: var(--text); text-decoration: none; }
+  .title a:hover { color: var(--accent); text-decoration: underline; }
+  .title-btn { color: var(--text); text-align: left; }
+  .title a.ext { color: var(--muted); font-size: 12px; }
+  .note { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .note b { color: var(--text); font-weight: 600; }
+  .good { color: var(--good); font-weight: 600; }
+  .bad { color: var(--bad); }
+  .grid { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+  .grid > div { display: flex; flex-direction: column; gap: 3px; }
+  .empty { color: var(--muted); padding: 18px 8px; text-align: center; }
+  code { background: var(--bg); padding: 1px 5px; border-radius: 4px; border: 1px solid var(--line); }
+  .filters { gap: 18px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  .filters label { display: inline-flex; align-items: center; gap: 6px; color: var(--text); }
+  .star { color: var(--warn); }
+  td.thumb { width: 44px; padding-right: 0; }
+  td.thumb img { display: block; border-radius: 3px; background: var(--bg); }
+  td.actions { white-space: nowrap; }
+
+  /* listings comparison panel (expands under a card) */
+  tr.detail > td { padding: 0 8px 10px; }
+  .compare { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  .stats { display: flex; gap: 26px; flex-wrap: wrap; margin-bottom: 10px; }
+  .stat .k { color: var(--muted); font-size: 12px; }
+  .stat .v { font-size: 17px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .stat .s { color: var(--muted); font-size: 12px; }
+  .compare table { min-width: 560px; background: var(--panel); border-radius: 6px; }
+  select { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line);
+          border-radius: 6px; padding: 5px 8px; }
+  tr.clickable { cursor: pointer; }
+  tr.clickable:hover td { background: var(--bg); }
+  .linklike { background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .linklike:hover { color: var(--accent); text-decoration: underline; }
+  td.thumb .linklike { cursor: zoom-in; display: block; }
+  .profit-good { color: var(--good); font-weight: 600; }
+  .profit-bad { color: var(--bad); font-weight: 600; }
+
+  /* card detail dialog */
+  dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 12px;
+           padding: 0; width: min(940px, calc(100vw - 24px)); max-height: calc(100vh - 32px); overflow: auto; }
+  dialog::backdrop { background: rgba(0, 0, 0, .62); }
+  .dlg { display: grid; grid-template-columns: minmax(220px, 330px) minmax(0, 1fr); gap: 22px; padding: 18px; }
+  .dlg > div { min-width: 0; }
+  dialog { overflow-x: hidden; }
+  @media (max-width: 720px) { .dlg { grid-template-columns: 1fr; } }
+  .dlg img.big { width: 100%; height: auto; border-radius: 12px; background: var(--bg); display: block; }
+  .dlg .noimg { aspect-ratio: 5 / 7; border: 1px dashed var(--line); border-radius: 12px; display: grid;
+                place-items: center; color: var(--muted); }
+  .dlg-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+  .dlg h2 { font-size: 20px; }
+  .dlg h3 { margin-top: 18px; }
+  .dlg .actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 0; }
+
+  /* resale calculator */
+  .calc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 12px; }
+  .calc-grid label { display: block; font-size: 12px; margin-bottom: 2px; }
+  .calc-grid input, .calc-grid select { width: 100%; }
+  .calc-out { margin-top: 12px; }
+  .calc-out table { min-width: 0; max-width: 460px; }
+  .calc-out td { padding: 4px 8px; border-bottom: 0; }
+  .calc-out td.num { text-align: right; }
+  .calc-out tr.total td { border-top: 1px solid var(--line); font-weight: 650; padding-top: 7px; }
+  .calc-out tr.minus td:first-child { color: var(--muted); }
+  .calc-warn { color: var(--warn); font-size: 12.5px; margin: 8px 0 0; }
+  details.rules { margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+  details.rules table { min-width: 0; margin-top: 6px; }
+  details.rules th, details.rules td { padding: 4px 8px; }
+  .compare-foot { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .coverage { background: var(--warn-bg); color: var(--warn); border-radius: 6px; padding: 6px 10px;
+              margin-bottom: 10px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+
+  /* ===== revamp: livelier palette, categories, carousel, tiles, logos ===== */
+  :root {
+    --bg: #f3f1ff; --panel: #ffffff; --text: #1d1b2e; --muted: #6a6785; --line: #e4e0f7;
+    --accent: #6c4cf5; --accent2: #ff5d8f;
+    --good: #12915a; --good-bg: #dcf7ea;
+    --steal: #b45309; --steal-bg: #ffecc2; --steal-edge: #f59e0b;
+    --deal: #0f8a55; --deal-bg: #d9f7e8; --deal-edge: #19c37d;
+    --fair: #2563eb; --fair-bg: #e0ebff;
+    --over: #c2410c; --over-bg: #ffe4d6;
+    --sus: #be123c; --sus-bg: #ffe0e8;
+    --warn: #92580a; --warn-bg: #fff1cf;
+    --shadow: 0 1px 2px rgba(60, 40, 140, .06), 0 6px 18px rgba(60, 40, 140, .07);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #11101c; --panel: #1b1a2b; --text: #ecebf8; --muted: #9a97b8; --line: #302e4a;
+      --accent: #9a86ff; --accent2: #ff7aa6;
+      --good: #4ade9b; --good-bg: #0f2c20;
+      --steal: #fbbf24; --steal-bg: #3b2a08; --steal-edge: #f59e0b;
+      --deal: #4ade9b; --deal-bg: #0f2c20; --deal-edge: #19c37d;
+      --fair: #7aa7ff; --fair-bg: #17233f;
+      --over: #fb923c; --over-bg: #3a1d0c;
+      --sus: #ff7a95; --sus-bg: #3a1020;
+      --warn: #f0b84a; --warn-bg: #2f2410;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 22px rgba(0, 0, 0, .35);
+    }
+  }
+  body { background:
+    radial-gradient(900px 380px at 12% -80px, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
+    radial-gradient(800px 360px at 95% -60px, color-mix(in srgb, var(--accent2) 14%, transparent), transparent 70%),
+    var(--bg); background-attachment: fixed; }
+  section { box-shadow: var(--shadow); border-radius: 14px; }
+  header { align-items: center; gap: 14px; margin-bottom: 2px; }
+  a.brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+  .wordmark { font-size: 27px; font-weight: 850; letter-spacing: -.02em; line-height: 1; }
+  .wordmark span { background: linear-gradient(90deg, var(--accent2), var(--accent)); -webkit-background-clip: text;
+                   background-clip: text; color: transparent; }
+  .logo { filter: drop-shadow(0 3px 6px rgba(108, 76, 245, .35)); }
+  .tagline { margin: 4px 0 0 2px; }
+  nav button[aria-current="page"] { color: var(--accent); border-bottom-color: var(--accent); }
+  button { background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 60%, var(--accent2))); font-weight: 600; }
+  button.ghost { background: transparent; color: var(--accent); }
+  a.btn { background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 60%, var(--accent2))); font-weight: 600; }
+  a.btn.ghost { background: transparent; color: var(--accent); }
+  .badge.live { color: var(--good); border-color: var(--good); background: var(--good-bg); }
+
+  /* price categories */
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 2px 0 12px; }
+  .chip { display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; padding: 7px 14px 7px 12px;
+          font-weight: 700; border: 2px solid var(--line); background: var(--panel); color: var(--muted); cursor: pointer; }
+  .chip .n { font-weight: 600; font-size: 12px; opacity: .85; }
+  .chip .dot { width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
+  .chip[aria-pressed="true"] { color: var(--text); }
+  .chip.steal[aria-pressed="true"] { border-color: var(--steal-edge); background: var(--steal-bg); color: var(--steal); }
+  .chip.deal[aria-pressed="true"] { border-color: var(--deal-edge); background: var(--deal-bg); color: var(--deal); }
+  .chip.fair[aria-pressed="true"] { border-color: var(--fair); background: var(--fair-bg); color: var(--fair); }
+  .chip.overpriced[aria-pressed="true"] { border-color: var(--over); background: var(--over-bg); color: var(--over); }
+  .chip.steal .dot { color: var(--steal-edge); } .chip.deal .dot { color: var(--deal-edge); }
+  .chip.fair .dot { color: var(--fair); } .chip.overpriced .dot { color: var(--over); }
+  .pill.steal { background: linear-gradient(135deg, #ffd45e, #ff9d2f); color: #4a2800; box-shadow: 0 1px 4px rgba(245, 158, 11, .45); }
+  .pill.deal { background: var(--deal-bg); color: var(--deal); }
+  .pill.fair { background: var(--fair-bg); color: var(--fair); }
+  .pill.overpriced { background: var(--over-bg); color: var(--over); }
+  .pill.sus { background: var(--sus-bg); color: var(--sus); }
+  tr.steal td:first-child { box-shadow: inset 4px 0 0 var(--steal-edge); }
+  tr.deal td:first-child { box-shadow: inset 4px 0 0 var(--deal-edge); }
+  tr.fair td:first-child { box-shadow: inset 4px 0 0 var(--fair); }
+  tr.overpriced td:first-child { box-shadow: inset 4px 0 0 var(--over); }
+  tr.overpriced, tr.fair { opacity: .92; }
+  .also { border-bottom: 0; padding-top: 0; }
+  .filters .also, .also .sub { font-size: 12.5px; }
+
+  /* the listing cell: photo + text */
+  .lcell { display: flex; gap: 12px; align-items: flex-start; }
+  .lthumb { flex: none; width: 64px; height: 64px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line);
+            background: var(--bg); padding: 0; cursor: pointer; }
+  .lthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .lcell .ltext { min-width: 0; }
+
+  /* carousel */
+  .carousel-box { padding: 12px 0 12px 16px; overflow: hidden; }
+  .carousel { overflow: hidden; margin-right: 0; mask-image: linear-gradient(90deg, #000 92%, transparent); }
+  .track { display: flex; gap: 12px; width: max-content; animation: marquee var(--dur, 60s) linear infinite; }
+  .carousel:hover .track, .carousel:focus-within .track { animation-play-state: paused; }
+  @keyframes marquee { to { transform: translateX(-50%); } }
+  @media (prefers-reduced-motion: reduce) { .track { animation: none; } .carousel { overflow-x: auto; } }
+  .ccard { all: unset; box-sizing: border-box; display: flex; flex-direction: column; width: 168px; cursor: pointer; border-radius: 14px;
+           background: var(--panel); border: 1px solid var(--line); overflow: hidden; box-shadow: var(--shadow); }
+  .ccard:hover, .ccard:focus-visible { border-color: var(--accent); transform: translateY(-2px); }
+  .ccard .cimg { height: 112px; background: var(--bg); position: relative; }
+  .ccard .cimg img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ccard .cbadge { position: absolute; top: 7px; left: 7px; }
+  .ccard .cbody { padding: 8px 10px 10px; }
+  .ccard .cname { font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ccard .cset { color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ccard .cprice { margin-top: 4px; font-weight: 800; font-size: 16px; }
+  .ccard .cprice s { color: var(--muted); font-weight: 500; font-size: 12px; margin-left: 4px; }
+
+  /* the listing popup: info tiles */
+  .note-banner { border-radius: 10px; padding: 9px 12px; margin: 10px 0 0; font-size: 13px; }
+  .note-banner b { display: block; margin-bottom: 2px; }
+  .note-banner ul { margin: 4px 0 0; padding-left: 18px; }
+  .note-banner.bad { background: var(--sus-bg); color: var(--sus); }
+  .note-banner.warn { background: var(--warn-bg); color: var(--warn); }
+  .note-banner.info { background: var(--fair-bg); color: var(--fair); }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 10px; }
+  .tile { display: flex; gap: 11px; align-items: flex-start; padding: 11px 12px; border: 1px solid var(--line);
+          border-radius: 14px; background: var(--panel); }
+  .tile .ico { flex: none; width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; font-size: 19px;
+               background: color-mix(in srgb, var(--tone, var(--accent)) 16%, transparent); }
+  .tile .k { color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; font-weight: 650; }
+  .tile .v { font-size: 17px; font-weight: 750; line-height: 1.25; }
+  .tile .s { color: var(--muted); font-size: 12px; margin-top: 1px; }
+  .tile[data-tone="money"] { --tone: #3b82f6; } .tile[data-tone="worth"] { --tone: #8b5cf6; }
+  .tile[data-tone="good"] { --tone: #19c37d; } .tile[data-tone="steal"] { --tone: #f59e0b; }
+  .tile[data-tone="bad"] { --tone: #f97316; } .tile[data-tone="seller"] { --tone: #14b8a6; }
+  .tile[data-tone="time"] { --tone: #64748b; } .tile[data-tone="fmt"] { --tone: #ec4899; }
+  .tile.big { grid-column: span 2; }
+  @media (max-width: 480px) { .tile.big { grid-column: auto; } }
+
+  /* set logos */
+  .setlogo { width: 92px; height: 44px; object-fit: contain; display: block; }
+  .setbadge { width: 92px; height: 44px; border-radius: 10px; display: grid; place-items: center; font-weight: 800; font-size: 13px;
+              color: #fff; background: linear-gradient(135deg, var(--accent2), var(--accent)); letter-spacing: .02em; }
+  td.logo-cell { width: 108px; padding-right: 4px; }
+  .setlogo-lg { height: 54px; max-width: 150px; object-fit: contain; }
+
+  /* a new deal arriving */
+  @keyframes arriveIn { from { opacity: 0; transform: translateY(-16px) scale(.985); } to { opacity: 1; transform: none; } }
+  @keyframes arriveGlow {
+    0%   { background: color-mix(in srgb, var(--steal-edge) 55%, transparent); box-shadow: inset 0 0 0 2px var(--steal-edge); }
+    55%  { background: color-mix(in srgb, var(--steal-edge) 22%, transparent); box-shadow: inset 0 0 0 2px transparent; }
+    100% { background: transparent; box-shadow: inset 0 0 0 2px transparent; }
+  }
+  tr.arrive { animation: arriveIn .55s cubic-bezier(.2, .9, .3, 1.2); }
+  tr.arrive td { animation: arriveGlow 3.4s ease-out; }
+  @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+  .chip.bump { animation: pop .6s ease-out; }
+  .toasts { position: fixed; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 10px; z-index: 50;
+            max-width: min(360px, calc(100vw - 32px)); pointer-events: none; }
+  @keyframes toastIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: none; } }
+  @keyframes toastOut { to { opacity: 0; transform: translateX(40px); } }
+  .toast { all: unset; box-sizing: border-box; pointer-events: auto; cursor: pointer; display: flex; gap: 11px; align-items: center;
+           background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--deal-edge); border-radius: 14px;
+           padding: 9px 12px 9px 9px; box-shadow: 0 10px 30px rgba(40, 20, 120, .28); animation: toastIn .45s cubic-bezier(.2, .9, .3, 1.2); }
+  .toast.steal { border-left-color: var(--steal-edge); }
+  .toast.leaving { animation: toastOut .35s ease-in forwards; }
+  .toast img { width: 46px; height: 46px; border-radius: 9px; object-fit: cover; flex: none; background: var(--bg); }
+  .toast .tt { font-weight: 750; font-size: 13px; }
+  .toast .ts { color: var(--muted); font-size: 12px; }
+  .toast .tp { font-weight: 800; }
+  @media (prefers-reduced-motion: reduce) {
+    tr.arrive, .chip.bump, .toast { animation: none; }
+    tr.arrive td { animation-duration: 1.5s; }
+  }
+
+  /* condition chips and the popup's essentials strip */
+  .price-line { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+  .cond-chip { display: inline-block; font-size: 10.5px; font-weight: 800; letter-spacing: .03em; padding: 1px 7px; border-radius: 999px;
+               border: 1.5px solid currentColor; line-height: 1.5; white-space: nowrap; }
+  .cond-chip.NM { color: var(--good); } .cond-chip.LP { color: #0e9bb8; } .cond-chip.MP { color: var(--warn); }
+  .cond-chip.HP { color: var(--over); } .cond-chip.DMG { color: var(--sus); }
+  .cond-chip.unknown { color: var(--muted); border-style: dashed; }
+  .ess { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; margin: 12px 0 2px; padding: 11px 14px;
+         border-radius: 14px; border: 1px solid var(--line); background: linear-gradient(135deg,
+         color-mix(in srgb, var(--accent) 9%, var(--panel)), var(--panel)); }
+  .ess-price { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .ess-amount { font-size: 26px; font-weight: 850; letter-spacing: -.02em; display: flex; align-items: center; gap: 10px; }
+  .ess-amount .cond-chip { font-size: 12px; padding: 2px 9px; letter-spacing: 0; }
+  .ess-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  .echip { font-size: 12.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--bg);
+           border: 1px solid var(--line); white-space: nowrap; }
+  .echip.ok { color: var(--good); border-color: color-mix(in srgb, var(--good) 40%, var(--line)); }
+  .echip.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); background: var(--warn-bg); }
+  .echip.wait { color: var(--muted); }
+
+  /* uncertain deals */
+  :root { --unc: #6d28d9; --unc-bg: #ece4ff; }
+  @media (prefers-color-scheme: dark) { :root { --unc: #b79cff; --unc-bg: #281b4d; } }
+  .chip.uncertain[aria-pressed="true"] { border-color: var(--unc); background: var(--unc-bg); color: var(--unc); }
+  .chip.uncertain .dot { color: var(--unc); }
+  .pill.uncertain { background: var(--unc-bg); color: var(--unc); border: 1px dashed var(--unc); }
+  tr.uncertain td:first-child { box-shadow: inset 4px 0 0 var(--unc); }
+  .note.unsure { color: var(--unc); font-weight: 600; }
+  .note.unsure a.btn { all: unset; cursor: pointer; text-decoration: underline; color: var(--unc); }
+  .note-banner.unc { background: var(--unc-bg); color: var(--unc); }
+  .note-banner.unc .actions { margin: 8px 0 0; }
+  .note-banner.unc a.btn { background: var(--unc); color: #fff; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <a class="brand" href="#deals" aria-label="PokeDeals">
+      <svg class="logo" viewBox="0 0 56 56" width="46" height="46" aria-hidden="true">
+        <defs>
+          <linearGradient id="lgCard" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#ff5d8f"/><stop offset="1" stop-color="#6c5cff"/></linearGradient>
+          <linearGradient id="lgBolt" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#ffe259"/><stop offset="1" stop-color="#ffa41b"/></linearGradient>
+        </defs>
+        <g transform="rotate(-9 28 28)">
+          <rect x="10" y="4" width="32" height="44" rx="6" fill="url(#lgCard)"/>
+          <rect x="14" y="9" width="24" height="20" rx="3" fill="#fff" opacity=".92"/>
+          <path d="M29 11 20 23h6l-3 9 10-13h-6z" fill="url(#lgBolt)" stroke="#e08a00" stroke-width=".8" stroke-linejoin="round"/>
+          <rect x="14" y="33" width="14" height="3" rx="1.5" fill="#fff" opacity=".85"/>
+          <rect x="14" y="39" width="20" height="3" rx="1.5" fill="#fff" opacity=".55"/>
+        </g>
+        <circle cx="42" cy="41" r="11" fill="#19c37d" stroke="#fff" stroke-width="2.5"/>
+        <text x="42" y="46" text-anchor="middle" font-size="14" font-weight="800" fill="#fff" font-family="system-ui, sans-serif">%</text>
+      </svg>
+      <span class="wordmark">Poke<span>Deals</span></span>
+    </a>
+    <span id="mode" class="badge"></span>
+    <span id="dbline" class="sub"></span>
+  </header>
+  <p class="tagline">Finds Pokémon cards on eBay that are listed for less than they're worth.</p>
+  <nav id="tabs" aria-label="Sections">
+    <button type="button" data-view="deals" title="Cards on eBay right now that are priced below their value">Deals</button>
+    <button type="button" data-view="search" title="Look up any card and compare its eBay listings">Search cards</button>
+    <button type="button" data-view="sets" title="Browse every card set">Sets</button>
+    <button type="button" data-view="watchlist" title="Cards you want to keep an eye on">Watchlist <span id="navWatch" class="sub"></span></button>
+    <button type="button" data-view="tools" title="Your ZIP code, a profit calculator and more">Tools</button>
+  </nav>
+  <div id="banner" class="banner" hidden></div>
+  <div id="envNote" class="banner" hidden></div>
+
+  <!-- DEALS -->
+  <div id="view-deals" class="view">
+    <section id="carouselBox" class="carousel-box" hidden>
+      <div class="bar"><h2>🔥 Hot right now</h2>
+        <span class="sub">The best deals going. Click one to see it next to our card.</span></div>
+      <div class="carousel" id="carousel" aria-label="Best deals right now"><div class="track" id="carouselTrack"></div></div>
+    </section>
+    <section>
+      <div class="bar">
+        <h2>Deals</h2>
+        <span id="summary" class="sub"></span>
+        <span class="spacer"></span>
+        <button id="refresh" class="ghost" title="Check eBay again right now">Check eBay now</button>
+      </div>
+      <div id="feedLine" class="sub feedline" hidden></div>
+      <div class="chips" id="catChips" role="group" aria-label="Price categories"></div>
+      <div class="bar filters">
+        <label title="Only look for the cards on your watchlist"><input id="watchOnly" type="checkbox"> Only my watchlist <span id="watchCount" class="sub"></span></label>
+        <label title="Total cost: price + shipping">You pay: $
+          <input id="minCost" type="number" min="0" step="1" placeholder="min" style="width:80px" aria-label="Minimum cost">
+          –
+          <input id="maxCost" type="number" min="0" step="1" placeholder="max" style="width:80px" aria-label="Maximum cost">
+          <button id="clearPrice" class="ghost small" type="button" hidden>clear</button>
+        </label>
+        <label>Sort <select id="dealSort" title="How the listings are ordered">
+          <option value="savings">Biggest savings</option>
+          <option value="newest">Newest first</option>
+          <option value="profit">Biggest resale profit</option>
+        </select></label>
+        <span id="liveQuery">
+          <input id="q" type="text" placeholder="Filter, e.g. charizard" size="22" aria-label="Filter listings">
+        </span>
+      </div>
+      <div class="bar filters" id="dealFilters">
+        <label title="Buy It Now listings, auctions, or ones that accept offers">Format
+          <select id="fFormat">
+            <option value="">All</option>
+            <option value="bin">Buy It Now</option>
+            <option value="auction">Auction</option>
+            <option value="offer">Accepts offers</option>
+          </select></label>
+        <label title="The condition we valued the card at">Condition
+          <select id="fCond">
+            <option value="">Any</option>
+            <option value="UNKNOWN">Unknown / not checked yet</option>
+            <option value="NM">Near Mint</option>
+            <option value="LP">Lightly Played</option>
+            <option value="MP">Moderately Played</option>
+            <option value="HP">Heavily Played</option>
+            <option value="DMG">Damaged</option>
+          </select></label>
+        <label title="Only listings at least this much cheaper than the card is worth">Savings at least
+          <input id="fSave" type="number" min="0" max="95" step="5" placeholder="%" style="width:64px" aria-label="Minimum savings percent"> %</label>
+        <label title="Hide listings whose condition we had to guess"><input id="fConfirmed" type="checkbox"> Seller-confirmed condition only</label>
+        <label title="Sellers outside the US cost more to ship and are slower. Off = US sellers only."><input id="fIntl" type="checkbox"> Include international sellers</label>
+      </div>
+      <div class="bar filters also">
+        <span class="sub">Also show:</span>
+        <label title="Priced so low, or from such a risky seller, that they are probably fakes or scams"><input id="showSus" type="checkbox"> Suspicious <span id="susCount" class="sub"></span></label>
+        <label title="Cheap listings held back for another reason: a weak or brand-new seller, an unsure match, an auction that is far from ending"><input id="showHeld" type="checkbox"> Held back <span id="heldCount" class="sub"></span></label>
+        <label title="Graded cards, lots, proxies and other listings we do not value"><input id="showSkipped" type="checkbox"> Skipped <span id="skipCount" class="sub"></span></label>
+        <button id="fClear" class="ghost small" type="button" hidden>Reset filters</button>
+      </div>
+      <div id="scanError" class="error" hidden></div>
+      <div class="table-wrap"><table id="deals"></table></div>
+    </section>
+  </div>
+
+  <!-- SEARCH -->
+  <div id="view-search" class="view" hidden>
+    <section>
+      <div class="bar"><h2>Search cards</h2>
+        <span class="sub">Find a card, then open its listings to compare them against the market price.</span></div>
+      <div class="grid">
+        <div style="flex:1 1 360px"><label for="cardQ">Find a card</label>
+          <input id="cardQ" type="text" autocomplete="off" maxlength="100" style="width:100%"
+                 placeholder="e.g. charizard base · pikachu 58/102 · umbreon vmax"></div>
+        <div><label for="cardSort">Sort by</label>
+          <select id="cardSort">
+            <option value="relevance">Best match</option>
+            <option value="price_desc">Price: high to low</option>
+            <option value="price_asc">Price: low to high</option>
+          </select></div>
+      </div>
+      <div id="searchHint" class="sub" style="margin-top:8px">Type a card's name (and optionally its set or number) to get started.</div>
+      <div id="results" hidden style="margin-top:10px">
+        <div class="table-wrap"><table id="resultsTable"></table></div>
+        <div id="resultsFoot" class="compare-foot"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- SETS -->
+  <div id="view-sets" class="view" hidden>
+    <section id="setsList">
+      <div class="bar">
+        <h2>Sets</h2><span id="setsSummary" class="sub"></span>
+        <span class="spacer"></span>
+        <input id="setQ" type="text" placeholder="Filter sets, e.g. base, scarlet" maxlength="100" size="26" aria-label="Filter sets">
+        <label>Sort by
+          <select id="setSort">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="alpha">A–Z</option>
+            <option value="size">Most cards</option>
+            <option value="value">Highest value</option>
+          </select></label>
+      </div>
+      <div class="table-wrap"><table id="setsTable"></table></div>
+      <div id="setsFoot" class="compare-foot"></div>
+    </section>
+    <section id="setDetail" hidden>
+      <div class="bar">
+        <button id="setBack" class="ghost small" type="button">← All sets</button>
+        <img id="setLogo" class="setlogo-lg" alt="" hidden>
+        <h2 id="setTitle"></h2><span id="setMeta" class="sub"></span>
+        <span class="spacer"></span>
+        <label>Sort by
+          <select id="setCardSort">
+            <option value="number">Card number</option>
+            <option value="price_desc">Price: high to low</option>
+            <option value="price_asc">Price: low to high</option>
+            <option value="alpha">Alphabetical</option>
+          </select></label>
+      </div>
+      <div class="table-wrap"><table id="setCards"></table></div>
+      <div id="setCardsFoot" class="compare-foot"></div>
+    </section>
+  </div>
+
+  <!-- WATCHLIST -->
+  <div id="view-watchlist" class="view" hidden>
+    <section>
+      <div class="bar"><h2>Watchlist</h2><span id="watchSummary" class="sub"></span>
+        <span class="spacer"></span>
+        <span class="sub">Live scans look up each watched card on eBay.</span></div>
+      <div class="table-wrap"><table id="watched"></table></div>
+    </section>
+  </div>
+
+  <!-- TOOLS -->
+  <div id="view-tools" class="view" hidden>
+    <section id="zipSection" hidden>
+      <div class="bar"><h2>Shipping destination</h2>
+        <span class="sub">Your ZIP lets eBay price "calculated" shipping, so deals use real costs instead of an assumed estimate.</span></div>
+      <form id="zipForm" class="grid">
+        <div><label for="zipInput">ZIP code</label>
+          <input id="zipInput" type="text" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" placeholder="12345"
+                 autocomplete="postal-code" style="width:110px"></div>
+        <div><button id="zipSave" type="submit">Save</button></div>
+        <div><button id="zipClear" type="button">Clear</button></div>
+      </form>
+      <div id="zipMsg" class="note" style="margin-top:6px"></div>
+      <div class="note">Saved on this computer only. It is sent to eBay, and nowhere else, when listings are fetched.</div>
+    </section>
+
+    <section id="calcSection">
+      <div class="bar"><h2>Resale profit calculator</h2>
+        <span class="sub">What selling a card on eBay would net after fees and postage.</span>
+        <span class="spacer"></span>
+        <button id="calcToggle" class="ghost small" type="button" aria-expanded="true">Hide</button></div>
+      <div id="toolCalc"></div>
+    </section>
+
+    <section>
+      <div class="bar"><h2>Try a listing</h2>
+        <span class="sub">Paste an eBay listing's title and price to see which card it is and whether it would be a deal.</span></div>
+      <form id="tryForm" class="grid">
+        <div style="flex:1 1 360px"><label for="tTitle">Title</label>
+          <input id="tTitle" type="text" required maxlength="300" placeholder="Charizard 4/102 Base Set Holo NM"></div>
+        <div><label for="tPrice">Price $</label>
+          <input id="tPrice" type="number" min="0" step="0.01" required value="500" style="width:100px"></div>
+        <div><label for="tShip">Shipping $</label>
+          <input id="tShip" type="number" min="0" step="0.01" value="4" style="width:90px"></div>
+        <div><button id="tGo" type="submit">Evaluate</button></div>
+      </form>
+      <div id="tryError" class="error" hidden style="margin-top:8px"></div>
+      <div class="table-wrap" id="tryOut" hidden style="margin-top:10px"><table id="tryTable"></table></div>
+      <div id="tryParsed" class="note" style="margin-top:6px"></div>
+    </section>
+
+    <section>
+      <div class="bar"><h2>What counts as a deal</h2><span class="sub">The rules in use. Advanced users can change them in <code>pokedeals/config.py</code>.</span></div>
+      <div id="settings" class="sub"></div>
+    </section>
+  </div>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <dialog id="cardDialog" aria-label="Card details">
+    <div id="cardDialogBody"></div>
+  </dialog>
+  <dialog id="listingDialog" aria-label="Listing details">
+    <div id="listingDialogBody"></div>
+  </dialog>
+</main>
+
+<script>
+"use strict";
+const $ = (sel) => document.querySelector(sel);
+const money = (n) => (n == null ? "—" : "$" + n.toFixed(2));
+const safeUrl = (u) => (typeof u === "string" && /^https?:\/\//i.test(u) ? u : null);
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+// Build DOM without innerHTML: listing titles are third-party text and must never be parsed as markup.
+function h(tag, props, ...kids) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(props || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") node.className = v; else node.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()) if (kid != null) node.append(kid.nodeType ? kid : document.createTextNode(kid));
+  return node;
+}
+
+async function api(path, opts) {
+  const res = await fetch(path, opts);
+  if (!res.ok) {
+    let detail = res.statusText;
+    try { const j = await res.json(); detail = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail); } catch {}
+    throw new Error(detail);
+  }
+  return res.json();
+}
+
+const store = {
+  get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+
+let appMode = "sample";
+
+// ---- tabs -------------------------------------------------------------------------------------
+const VIEWS = ["deals", "search", "sets", "watchlist", "tools"];
+function showView(name) {
+  if (!VIEWS.includes(name)) name = "deals";
+  for (const v of VIEWS) {
+    $("#view-" + v).hidden = v !== name;
+    document.querySelector(`nav [data-view="${v}"]`).setAttribute("aria-current", v === name ? "page" : "false");
+  }
+  if (name === "search") $("#cardQ").focus();
+  if (name === "sets" && !setsLoaded) { setsLoaded = true; loadSets(); }   // fetched on first visit only
+}
+let setsLoaded = false;
+for (const b of document.querySelectorAll("nav [data-view]"))
+  b.addEventListener("click", () => { location.hash = b.dataset.view; });
+window.addEventListener("hashchange", () => showView(location.hash.slice(1)));
+
+// ---- listing rows (deals feed + "try a listing") -----------------------------------------------
+const COND_NAMES = { NM: "Near Mint", LP: "Lightly Played", MP: "Moderately Played", HP: "Heavily Played", DMG: "Damaged" };
+const condName = (c) => (COND_NAMES[c] ? `${COND_NAMES[c]} (${c})` : c);
+
+// When the seller does not say what condition a card is in we value it as Lightly Played, a placeholder.
+// Show that honestly: "Unknown" in lists, with the placeholder explained when you look closer.
+const condAssumed = (r) => !!(r.valuation && r.valuation.flags.some((f) => f.startsWith("condition-assumed")));
+// "Not checked yet" = we have not asked eBay for this listing's condition (the feed does so for deals first);
+// "Unknown" = we asked and the seller really did not say.
+const condPending = (r) => condAssumed(r) && r.first_seen != null && !r.verified_at;
+// The condition as a small coloured chip: NM / LP / MP / HP / DMG, or "?" when it is a placeholder.
+function condChip(r, long = false) {
+  const code = r.valuation ? r.valuation.condition : r.card_condition;
+  if (!code) return null;
+  if (condPending(r) || condAssumed(r)) {
+    return h("span", { class: "cond-chip unknown", title: condPending(r)
+      ? `Condition not checked with eBay yet. We value it as ${condName(code)} as a placeholder.`
+      : `The seller didn't say. We value it as ${condName(code)} as a placeholder.` }, long ? (condPending(r) ? "Not checked yet" : "Unknown") : "?");
+  }
+  return h("span", { class: "cond-chip " + code, title: condName(code) }, long ? condName(code) : code);
+}
+const condShown = (r) => (condPending(r) ? "Not checked yet" : condAssumed(r) ? "Unknown"
+  : r.valuation ? condName(r.valuation.condition) : r.card_condition ? condName(r.card_condition) : null);
+
+// Plain-English version of the technical flags the matcher and scorer attach to a valuation.
+function flagText(f, v) {
+  if (f === "condition-seller-stated") return `Condition (${condName(v.condition)}) is what the seller says it is.`;
+  if (f.startsWith("condition-assumed")) return `The seller didn't say what condition it is in, so we assumed ${condName(v.condition)}, which lowers what it's worth.`;
+  const known = {
+    "condition-price-tcgplayer": `Worth (${money(v.fair_value)}) is TCGplayer's own market price for a ${condName(v.condition)} copy` +
+      `${v.cond_sold ? `, based on ${v.cond_sold} sales in the last 3 months` : ""}, not a guess.`,
+    "shipping-assumed": "eBay didn't give a shipping cost for this one, so we assumed $4.50. Add your ZIP code in Tools to see the real cost.",
+    "variant-assumed": "This card comes in several prints (for example holo and non-holo) and the title doesn't say which, so we used the cheapest print to be safe.",
+    "finish-unavailable": "The print named in the title has no price, so we used the closest one.",
+    "first-edition-price-missing": "The title says 1st Edition but we have no 1st Edition price, so we used the regular price.",
+    "shadowless-price-missing": "The title says Shadowless but we have no Shadowless price, so we used the regular price.",
+    "reprint-set": "Matched to a reprint set (such as the 30th Anniversary collection), not the original card.",
+    "name-fuzzy": "The card's name was spelled slightly differently in the title.",
+    "name-not-in-title": "The title doesn't contain the card's name, only its number, so this may be a different card.",
+    "ambiguous-set": "The card number fits more than one set, so we may have picked the wrong one.",
+    "ambiguous-card": "More than one card fits this title, so we may have picked the wrong one.",
+    "auction-current-bid": "This is an auction: the price is the current bid, which can still go up.",
+  };
+  return known[f] || null;
+}
+
+function matchLabel(conf) {
+  return conf >= 0.9 ? "High" : conf >= 0.8 ? "Good" : "Fair";
+}
+
+const CATEGORY = {
+  steal: { label: "Steal", tip: "25% or more under what the card is worth" },
+  deal: { label: "Deal", tip: "10% to 25% under what the card is worth" },
+  uncertain: { label: "Uncertain", tip: "Looks cheap, but TCGplayer has too few recent sales of this card to trust its price. Check eBay's sold listings." },
+  fair: { label: "Fair", tip: "Priced about right: between 10% under and 5% over" },
+  overpriced: { label: "Overpriced", tip: "More than 5% over what the card is worth" },
+};
+
+function statusPill(r) {
+  if (r.status === "suspicious") return h("span", { class: "pill sus", title: "Probably a fake or a scam" }, "Suspicious");
+  if (r.status === "skip" || r.blocked) return h("span", { class: "pill no", title: r.why }, r.label || "Skipped");
+  const c = CATEGORY[r.category];
+  if (!c) return h("span", { class: "pill no" }, r.label || "—");
+  const fresh = r.is_deal && r.first_seen && Date.now() - new Date(r.first_seen).getTime() < 15 * 60 * 1000;
+  const tip = r.category === "uncertain" ? `Would be a ${r.would_be} if the price could be trusted. ${c.tip}` : c.tip;
+  return h("span", {}, h("span", { class: "pill " + r.category, title: tip }, c.label.toUpperCase()),
+    fresh ? h("span", { class: "pill new" }, "NEW") : null);
+}
+
+// The row's button opens the popup with the full picture.
+function whyToggle(r) {
+  const warn = (r.status === "deal" || r.category === "steal") && r.reasons.length;
+  const btn = h("button", { class: "why-btn" + (warn ? " warn" : ""), type: "button",
+    title: "See the listing next to our card, and how we judged it" }, warn ? "⚠ Details" : "Details");
+  btn.addEventListener("click", () => openListing(r));
+  return btn;
+}
+
+// Cheaper-than-reference wording used everywhere: "49% cheaper" / "12% pricier".
+function discountCell(v) {
+  if (!v) return h("span", { class: "sub" }, "—");
+  const pct = Math.round(Math.abs(v.discount) * 100);
+  return v.discount >= 0
+    ? h("span", { class: "good" }, pct + "% cheaper")
+    : h("span", { class: "bad" }, pct + "% pricier");
+}
+
+const costOf = (r) => (r.valuation ? r.valuation.total_cost : r.price + (r.shipping || 0));
+
+// Which rows a table shows: deals always; suspicious ones and everything else only when asked for.
+// minCost/maxCost filter on total cost (price + shipping). Returns how many rows the price filter hid.
+function passesFilters(r, f) {
+  if (!f) return true;
+  const o = r.buying_options || [];
+  if (f.format === "bin" && !o.includes("FIXED_PRICE")) return false;
+  if (f.format === "auction" && !o.includes("AUCTION")) return false;
+  if (f.format === "offer" && !o.includes("BEST_OFFER")) return false;
+  if (f.condition && (!r.valuation || (condAssumed(r) ? "UNKNOWN" : r.valuation.condition) !== f.condition)) return false;
+  if (f.minSavings != null && (!r.valuation || r.valuation.discount * 100 < f.minSavings)) return false;
+  if (f.confirmed && !(r.valuation && r.valuation.flags.includes("condition-seller-stated"))) return false;
+  return true;
+}
+
+function renderRows(table, rows, { minCost = null, maxCost = null, emptyMsg = null, filters = null } = {}) {
+  const shown = rows.filter((r) =>
+    (minCost == null || costOf(r) >= minCost) && (maxCost == null || costOf(r) <= maxCost) && passesFilters(r, filters));
+  const hidden = rows.length - shown.length;
+  const empty = emptyMsg
+    || (hidden ? "Nothing matches your filters. Try loosening them."
+        : "Nothing here right now. New listings are checked every minute; you can also switch on another category above.");
+  table.replaceChildren(
+    h("thead", {}, h("tr", {},
+      h("th", {}, ""), h("th", {}, "Listing"), h("th", {}, "Card"),
+      h("th", { class: "num", title: "Item price plus shipping" }, "You pay"),
+      h("th", { class: "num", title: "What the card is worth: TCGplayer's market price for the card's condition" }, "Worth"),
+      h("th", { title: "How much cheaper (or pricier) the listing is than what the card is worth" }, "Savings"),
+      h("th", { class: "num", title: "Profit if you bought this and resold it on eBay, after eBay's fees and postage" }, "If you resell"),
+      h("th", { title: "How sure we are this listing is really that card" }, "Match"))),
+    h("tbody", {}, shown.length ? shown.map(rowEl) : h("tr", {}, h("td", { colspan: 8, class: "empty" }, empty))),
+  );
+  return hidden;
+}
+
+// How far under what eBay sellers are actually asking for this card (when enough of them were seen).
+function ebayNote(v) {
+  if (!v || v.vs_ebay == null) return null;
+  const pct = Math.round(Math.abs(v.vs_ebay) * 100);
+  return h("div", { class: "note",
+    title: `The typical eBay listing of this card in this condition costs ${money(v.ebay_typical)} (${v.cohort_size} compared)` },
+    `${pct}% ${v.vs_ebay >= 0 ? "cheaper" : "pricier"} than other eBay listings`);
+}
+
+// Estimated profit from reselling on eBay after fees and postage (see /api/profit).
+function resaleCell(v) {
+  const rs = v && v.resale;
+  if (!rs) return h("span", { class: "sub" }, "—");
+  const good = rs.profit >= 0;
+  const price = rs.capped_by_ebay
+    ? `the typical eBay price ${money(rs.sale_price)} (TCGplayer says ${money(v.fair_value)}, but eBay sells this card lower)`
+    : `its worth, ${money(rs.sale_price)}`;
+  const tip = `Bought at ${money(v.total_cost)}, resold at ${price}: ` +
+    `eBay fees ${money(rs.fees)}, postage ${money(rs.postage)}${rs.postage_estimated ? " (estimate)" : ""}.`;
+  return h("span", { title: tip },
+    h("span", { class: good ? "profit-good" : "profit-bad" }, (good ? "+" : "−") + money(Math.abs(rs.profit))),
+    rs.roi != null ? h("div", { class: "note" }, `${Math.round(rs.roi * 100)}% return`) : null);
+}
+
+// Clicking a listing opens its popup (photo next to our card, and how we judged it); eBay is one click further.
+function listingTitle(r) {
+  const url = safeUrl(r.url);
+  const open = h("button", { class: "linklike title-btn", type: "button", title: "See this listing next to our card" }, r.title);
+  open.addEventListener("click", () => openListing(r));
+  return h("div", { class: "title" },
+    r.watched ? h("span", { class: "star", title: "On your watchlist" }, "★ ") : null,
+    open,
+    url ? h("a", { class: "ext", href: url, target: "_blank", rel: "noopener noreferrer", title: "Open straight on eBay" }, " ↗") : null);
+}
+
+// Short facts under the title: condition, auction timing. (Everything else lives behind "Why?".)
+function listingBits(r) {
+  const bits = [];
+  const o = r.buying_options, auction = o.includes("AUCTION"), bin = o.includes("FIXED_PRICE");
+  bits.push(auction && bin ? "Auction or Buy It Now" : auction ? "Auction" : "Buy It Now" + (o.includes("BEST_OFFER") ? " · accepts offers" : ""));
+  if (auction && r.ends) bits.push("auction ends " + new Date(r.ends).toLocaleString());
+  if (r.first_seen) bits.push("Found " + ago(r.first_seen));
+  return bits;
+}
+
+function listingCell(r) {
+  const thumb = r.image ? h("button", { class: "lthumb", type: "button", title: "See this listing next to our card" },
+    h("img", { src: r.image, alt: "", loading: "lazy", referrerpolicy: "no-referrer" })) : null;
+  if (thumb) thumb.addEventListener("click", () => openListing(r));
+  return h("td", { class: "listing" }, h("div", { class: "lcell" }, thumb,
+    h("div", { class: "ltext" }, listingTitle(r),
+      h("div", { class: "note" }, listingBits(r).join(" · "), " ", whyToggle(r)))));
+}
+
+function rowEl(r) {
+  const v = r.valuation, c = r.card;
+  const cls = r.status === "suspicious" ? "sus" : r.status === "skip" || r.blocked ? "rejected" : r.category;
+  return h("tr", { class: cls + (r._arrive ? " arrive" : "") },
+    h("td", {}, statusPill(r)),
+    listingCell(r),
+    h("td", {}, c ? [cardLink(c.id, c.name, null), h("div", { class: "note" }, `${c.set} #${c.number}`)]
+                  : h("span", { class: "sub" }, "—")),
+    h("td", { class: "num" }, h("div", { class: "price-line" }, v ? money(v.total_cost) : money(r.price + (r.shipping || 0)), condChip(r)),
+      h("div", { class: "note" }, `${money(r.price)} + ${r.shipping == null ? "?" : money(r.shipping)} shipping`)),
+    h("td", { class: "num" }, v ? money(v.fair_value) : "—",
+      v && v.thin_reason && c ? h("div", { class: "note unsure", title: v.thin_reason + ". Check what it really sells for." },
+        "⚠ few sales · ", soldLink(c, "linkish")) : null),
+    h("td", { class: "vs" }, discountCell(v), ebayNote(v)),
+    h("td", { class: "num" }, resaleCell(v)),
+    h("td", {}, v ? h("span", { title: `Match confidence ${v.confidence.toFixed(2)}` }, matchLabel(v.confidence)) : "—"));
+}
+
+// ---- listing popup: the eBay photo next to our card, plus everything we worked out ---------------
+const ldlg = $("#listingDialog");
+ldlg.addEventListener("click", (e) => { if (e.target === ldlg) ldlg.close(); });
+
+// eBay's search results carry a 225px thumbnail; the same image id serves bigger sizes.
+const bigEbayImage = (u) => (u ? u.replace(/s-l\d+/, "s-l1600") : u);
+const ourCardImage = (c) => (c && c.image ? `${c.image}/high.webp` : null);
+
+// eBay's page of SOLD listings for a card. (eBay only gives sold data to approved partners through its API,
+// so this opens the same search you would run by hand.)
+function soldUrl(c) {
+  const q = `${c.name} ${c.local_id ?? c.number}${c.official_count ? "/" + c.official_count : ""}`;
+  return "https://www.ebay.com/sch/i.html?_nkw=" + encodeURIComponent(q) + "&_sacat=183454&LH_Sold=1&LH_Complete=1&_sop=13";
+}
+function soldLink(c, cls = "ghost small") {
+  return h("a", { class: "btn " + cls, href: soldUrl(c), target: "_blank", rel: "noopener noreferrer",
+    title: "Open eBay's list of recently SOLD listings for this card" }, "Sold on eBay ↗");
+}
+
+function photoFrame(src, caption, alt) {
+  const img = src ? h("img", { src, alt, referrerpolicy: "no-referrer" })
+    : h("div", { class: "noimg" }, "No image");
+  return h("figure", { class: "photo" }, img, h("figcaption", {}, caption));
+}
+
+// Compare what the listing says it is (its item specifics) with the card we matched it to.
+function specRows(aspects, c) {
+  const sp = (k) => (aspects && aspects[k]) || null;
+  const norm = (t) => String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const rows = [];
+  const num = sp("Card Number");
+  if (num) {
+    const ok = norm(num).split(" ")[0].replace(/^0+/, "") === String(c.number).toLowerCase().replace(/^0+/, "");
+    rows.push(["Card number", num, `#${c.number}`, ok]);
+  }
+  const set = sp("Set");
+  if (set) {
+    const a = norm(set), b = norm(c.set);
+    rows.push(["Set", set, c.set, a.includes(b) || b.includes(a)]);
+  }
+  const name = sp("Card Name") || sp("Character");
+  if (name) rows.push(["Name", name, c.name, norm(name).includes(norm(c.name)) || norm(c.name).includes(norm(name))]);
+  const rarity = sp("Rarity");
+  if (rarity && c.rarity) rows.push(["Rarity", rarity, c.rarity, norm(rarity).includes(norm(c.rarity)) || norm(c.rarity).includes(norm(rarity))]);
+  if (sp("Language")) rows.push(["Language", sp("Language"), "English", norm(sp("Language")) === "english"]);
+  return rows;
+}
+
+const tile = (tone, icon, k, v, sub, big = false) => h("div", { class: "tile" + (big ? " big" : ""), "data-tone": tone },
+  h("div", { class: "ico", "aria-hidden": "true" }, icon),
+  h("div", {}, h("div", { class: "k" }, k), h("div", { class: "v" }, v), sub ? h("div", { class: "s" }, sub) : null));
+
+// Everything that decides "do I click through?" on one line: the price with its condition beside it, then the
+// compact facts: shipping, where it ships from, still for sale?, and how sure we are of the match.
+function essentials(r) {
+  const v = r.valuation, flags = v ? v.flags : [];
+  const cat = CATEGORY[r.category];
+  const shipText = r.shipping == null ? "Shipping unknown" : r.shipping === 0 ? "Free shipping" : `${money(r.shipping)} shipping`;
+  const chip = (icon, text, title, cls = "") => h("span", { class: "echip " + cls, title }, h("span", { "aria-hidden": "true" }, icon), " ", text);
+  const abroad = r.ships_from && r.ships_from !== "US";
+  const sale = r.verified_at ? chip("🟢", "Checked " + ago(r.verified_at), "eBay still listed it when we checked. We don't re-check, so open it to be sure.", "ok")
+    : r.first_seen != null ? chip("⏳", "Not checked yet", "Deals are checked on eBay as soon as the day's budget allows, then every few hours", "wait") : null;
+  return h("div", { class: "ess" },
+    h("div", { class: "ess-price" },
+      h("div", { class: "ess-amount" }, v ? money(v.total_cost) : money(r.price), condChip(r, true)),
+      v && cat ? h("span", { class: "pill " + r.category, title: cat.tip }, `${cat.label.toUpperCase()} · ${Math.round(Math.abs(v.discount) * 100)}% ${v.discount >= 0 ? "cheaper" : "pricier"}`) : null),
+    h("div", { class: "ess-chips" },
+      chip("🚚", shipText + (flags.includes("shipping-assumed") ? " (estimated)" : ""),
+        flags.includes("shipping-assumed") ? "eBay gave no shipping cost; we assumed one. Set your ZIP in Tools for the real cost." : "Shipping to you"),
+      chip("📍", r.ships_from ? "From " + r.ships_from : "Location not stated", abroad ? "Outside the US: slower and pricier to ship" : "Where the seller ships from", abroad ? "warn" : ""),
+      sale,
+      v ? chip("🔎", "Match: " + matchLabel(v.confidence), `How sure we are this is ${r.card ? r.card.name : "that card"}`,
+        v.confidence < 0.8 ? "warn" : "") : null,
+      v && v.thin_reason ? chip("⚠️", "Uncertain price", v.thin_reason, "warn") : null));
+}
+
+function listingTiles(r) {
+  const v = r.valuation, o = r.buying_options, tiles = [];
+  const pctText = (frac) => `${Math.round(Math.abs(frac) * 100)}% ${frac >= 0 ? "cheaper" : "pricier"}`;
+  if (v) {
+    const flags = v.flags;
+    tiles.push(tile("worth", "🏷️", "Worth", money(v.fair_value), flags.includes("condition-price-tcgplayer")
+      ? `TCGplayer ${condName(v.condition)} market price · ${v.cond_sold === 1 ? "1 sale" : v.cond_sold.toLocaleString() + " sales"} in 3 months`
+      : `Estimated from the card's ${money(v.market)} market price${v.thin_reason ? ". " + v.thin_reason : ""}`));
+    const cat = CATEGORY[r.category];
+    tiles.push(tile(r.category === "steal" ? "steal" : r.category === "deal" ? "good" : r.category === "overpriced" ? "bad" : "time",
+      r.category === "steal" ? "🔥" : r.category === "deal" ? "✅" : r.category === "overpriced" ? "📈" : "⚖️",
+      "Savings", pctText(v.discount), cat ? `${cat.label}: ${cat.tip.toLowerCase()}` : null));
+    if (v.vs_ebay != null)
+      tiles.push(tile("fmt", "🛒", "Other eBay sellers", money(v.ebay_typical),
+        `${v.cohort_size} similar listings · this one is ${pctText(v.vs_ebay)}`));
+    if (condPending(r) || condAssumed(r))
+      tiles.push(tile("time", condPending(r) ? "⏳" : "❔", "Condition", condPending(r) ? "Not checked yet" : "Unknown",
+        (condPending(r) ? "We haven't asked eBay for the seller's stated condition yet. " : "We asked eBay and the seller didn't say. ") +
+        `We value it as ${condName(v.condition)} as a placeholder, so the price shown may be off.`));
+    if (v.resale) {
+      const rs = v.resale;
+      tiles.push(tile(rs.profit >= 0 ? "good" : "bad", "💵", "If you resell", (rs.profit >= 0 ? "+" : "−") + money(Math.abs(rs.profit)),
+        `${rs.roi != null ? Math.round(rs.roi * 100) + "% return · " : ""}after eBay fees and postage`));
+    }
+  }
+  tiles.push(tile("fmt", "🧩", "Format",
+    o.includes("AUCTION") && o.includes("FIXED_PRICE") ? "Auction or Buy It Now" : o.includes("AUCTION") ? "Auction" : "Buy It Now",
+    [o.includes("BEST_OFFER") ? "Accepts offers" : null, r.ends ? "Ends " + new Date(r.ends).toLocaleString() : null].filter(Boolean).join(" · ") || null));
+  tiles.push(tile("seller", "👤", "Seller", r.seller_name || "Seller",
+    [r.seller_feedback_pct != null ? r.seller_feedback_pct + "% positive" : null,
+     r.seller_feedback_score != null ? r.seller_feedback_score.toLocaleString() + " feedback" : null].filter(Boolean).join(" · ") || null));
+  if (r.first_seen) tiles.push(tile("time", "🕒", "Found", ago(r.first_seen), "when we first saw it on eBay"));
+  return h("div", { class: "tiles" }, tiles);
+}
+
+function listingBanners(r) {
+  const out = [];
+  if (r.valuation && r.valuation.thin_reason && r.card) {
+    out.push(h("div", { class: "note-banner unc" }, h("b", {}, "The price we compare this against is uncertain"),
+      r.valuation.thin_reason + ". TCGplayer's number may not be what this card really sells for, so look at eBay's recently " +
+      "sold listings before you trust this deal.",
+      h("div", { class: "actions" }, soldLink(r.card, ""))));
+  }
+  if (r.status === "suspicious")
+    out.push(h("div", { class: "note-banner bad" }, h("b", {}, "This looks like a fake or a scam"),
+      h("ul", {}, r.reasons.map((t) => h("li", {}, t))),
+      "We don't count it as a deal. If you still want it, check the photos, the seller and the return policy first."));
+  else if (r.status === "skip")
+    out.push(h("div", { class: "note-banner info" }, h("b", {}, "Not valued"), r.why.charAt(0).toUpperCase() + r.why.slice(1) + "."));
+  else if (r.blocked)
+    out.push(h("div", { class: "note-banner info" }, h("b", {}, "Held back from the deals"), r.why.charAt(0).toUpperCase() + r.why.slice(1) + "."));
+  else if (r.reasons.length)
+    out.push(h("div", { class: "note-banner warn" }, h("b", {}, "Heads-up"), h("ul", {}, r.reasons.map((t) => h("li", {}, t)))));
+  return out;
+}
+
+async function openListing(r) {
+  const body = $("#listingDialogBody"), c = r.card;
+  const close = h("button", { class: "ghost small", type: "button" }, "Close ✕");
+  close.addEventListener("click", () => ldlg.close());
+
+  const mainPhoto = h("div", {});
+  const strip = h("div", { class: "strip" });
+  let photos = r.image ? [r.image] : [];
+  const showPhoto = (src) => mainPhoto.replaceChildren(photoFrame(bigEbayImage(src), "The eBay listing's photo", r.title));
+  const drawStrip = () => strip.replaceChildren(...(photos.length > 1 ? photos.slice(0, 8).map((p) => {
+    const b = h("button", { class: "linklike", type: "button", "aria-label": "Show this photo" },
+      h("img", { src: p.replace(/s-l\d+/, "s-l140"), alt: "", width: 44, height: 44, referrerpolicy: "no-referrer" }));
+    b.addEventListener("click", () => showPhoto(p));
+    return b;
+  }) : []));
+  showPhoto(photos[0]);
+
+  const ours = c ? photoFrame(ourCardImage(c), `Our card: ${c.name} · ${c.set} #${c.number}${c.rarity ? " · " + c.rarity : ""}`, c.name)
+    : h("figure", { class: "photo" }, h("div", { class: "noimg" }, "No card matched"), h("figcaption", {}, "We could not match this listing to a card"));
+
+  const specs = h("div", { class: "sub" }, appMode === "live" ? "Reading the listing's item specifics from eBay…" : "");
+  const notes = h("div", {});
+
+  const url = safeUrl(r.url);
+  const actions = h("div", { class: "actions" },
+    url ? h("a", { class: "btn", href: url, target: "_blank", rel: "noopener noreferrer" }, "Open on eBay ↗") : null,
+    c ? soldLink(c, "ghost") : null,
+    c && c.tcgplayer_url ? h("a", { class: "btn ghost", href: c.tcgplayer_url, target: "_blank", rel: "noopener noreferrer",
+      title: "Open this card's page on TCGplayer" }, "View on TCGplayer ↗") : null);
+  if (c) {
+    const viewCard = h("button", { class: "ghost", type: "button" }, "View our card");
+    viewCard.addEventListener("click", () => { ldlg.close(); openCard(c.id, null); });
+    actions.append(viewCard);
+  }
+
+  body.replaceChildren(h("div", { class: "ldlg" },
+    h("div", { class: "dlg-head" }, h("h2", {}, h("span", { class: "title" }, statusPill(r), " ", r.title)), close),
+    actions,
+    essentials(r),
+    ...listingBanners(r),
+    h("div", { class: "compare-photos" }, h("div", {}, mainPhoto, strip), ours),
+    h("h3", {}, "About this listing"),
+    listingTiles(r),
+    h("h3", {}, "Does the listing match our card?"), specs, notes));
+  if (!ldlg.open) ldlg.showModal();
+
+  // live detail from eBay: every photo, the seller's condition notes and the item specifics
+  if (appMode !== "live") return;
+  try {
+    const d = await api("/api/listing?id=" + encodeURIComponent(r.id));
+    if (d.images.length) { photos = d.images; showPhoto(photos[0]); drawStrip(); }
+    const rows = c ? specRows(d.aspects, c) : [];
+    specs.replaceChildren(rows.length
+      ? h("table", { class: "facts" }, h("thead", {}, h("tr", {}, h("th", {}), h("th", {}, "Listing says"), h("th", {}, "Our card"), h("th", {}))),
+          h("tbody", {}, rows.map(([k, theirs, mine, ok]) => h("tr", {}, h("td", { class: "k" }, k), h("td", {}, theirs), h("td", {}, mine),
+            h("td", { class: ok ? "good" : "bad", title: ok ? "Matches" : "Does not match: check the photos before buying" }, ok ? "✓" : "⚠")))))
+      : h("div", { class: "sub" }, "The seller did not fill in the card details, so there is nothing to compare."));
+    if (d.condition_notes.length)
+      notes.replaceChildren(h("h3", {}, "Seller's condition notes"), h("ul", {}, d.condition_notes.map((t) => h("li", {}, t))));
+  } catch (e) {
+    specs.replaceChildren(h("div", { class: "sub" }, e.message));
+  }
+}
+
+// A card name that opens the large-image detail dialog.
+function cardLink(cardId, text, ctx) {
+  const b = h("button", { class: "linklike", type: "button", title: "View larger image and prices" }, text);
+  b.addEventListener("click", () => openCard(cardId, ctx));
+  return b;
+}
+
+// ---- deals tab --------------------------------------------------------------------------------
+let lastScan = null;
+let scanSeq = 0;
+
+async function loadStatus() {
+  const s = await api("/api/status");
+  const mode = $("#mode");
+  appMode = s.mode;
+  const sandbox = s.mode === "live" && s.ebay_env === "sandbox";
+  mode.textContent = sandbox ? "eBay sandbox" : s.mode === "live" ? "live eBay" : "sample data";
+  mode.className = "badge " + (sandbox ? "sample" : s.mode);          // amber for anything that is not real listings
+  mode.title = sandbox ? "Connected to eBay's sandbox: test listings only, no real Pokémon cards"
+    : s.mode === "live" ? "Fetching real eBay listings"
+    : "No eBay key configured: scoring the bundled sample listings against real card prices";
+  const envNote = $("#envNote");
+  envNote.hidden = !sandbox;
+  if (sandbox) envNote.textContent =
+    "Connected to eBay's sandbox, which only holds test listings, so there are no real Pokémon cards to find. " +
+    "For real deals, add a production keyset to keyset.txt. To see the bundled sample listings meanwhile, " +
+    "start the app with: python -m pokedeals serve --sample";
+  $("#dbline").textContent = s.db.cards
+    ? `${s.db.cards.toLocaleString()} cards · ${s.db.priced.toLocaleString()} priced · prices as of ${(s.db.prices_updated || "?").slice(0, 10)}`
+    : "";
+  const banner = $("#banner");
+  banner.hidden = s.db.cards > 0;
+  if (!s.db.cards) banner.textContent = "The card database is empty. Run: python -m pokedeals sync";
+  $("#zipSection").hidden = s.buyer_zip == null;       // null = sample mode: no eBay, nothing to ship from
+  if (s.buyer_zip != null) showZip(s.buyer_zip);
+  const st = s.settings;
+  $("#settings").textContent =
+    `A listing must be at least ${Math.round(st.min_discount * 100)}% cheaper than the card's worth, and we must be ` +
+    `confident it is the right card. Sellers need ${st.min_seller_feedback_pct}% positive feedback. When a seller ` +
+    `doesn't state the condition we assume ${condName(st.default_condition)}. Auctions only count in their last ` +
+    `${st.auction_window_hours} hours. Listings far cheaper than they should be are marked Suspicious.`;
+}
+
+let feedWaiting = false;     // the "Check eBay now" button was pressed and we are waiting for the cycle to land
+
+function ago(iso) {
+  if (!iso) return "never";
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 90) return "just now";
+  if (s < 3600) return Math.round(s / 60) + " min ago";
+  if (s < 86400) return Math.round(s / 3600) + " h ago";
+  return Math.round(s / 86400) + " days ago";
+}
+
+function drawFeedLine(feed) {
+  const el = $("#feedLine");
+  el.hidden = !feed;
+  if (!feed) return;
+  const parts = [];
+  if (feed.cycling) parts.push(h("span", {}, h("span", { class: "live-dot" }, "● "), "Checking eBay now…"));
+  else parts.push(h("span", {}, h("span", { class: "live-dot" }, "● Live"),
+    " · last checked eBay " + ago(feed.last_fast_at || feed.last_cycle_at)));
+  parts.push(`${feed.tracked.toLocaleString()} listings tracked`);
+  parts.push(feed.fast_interval > 0 ? `new listings are checked about every ${feed.fast_interval >= 60 ? Math.round(feed.fast_interval / 60) + " min" : feed.fast_interval + " s"}`
+    : "checks every few minutes");
+  if (feed.budget_reached) parts.push(h("span", { class: "bad" }, "daily eBay call budget used up: paused until tomorrow"));
+  if (feed.error) parts.push(h("span", { class: "bad", title: feed.error }, "⚠ last check had a problem"));
+  el.replaceChildren(...parts.flatMap((p, i) => (i ? [" · ", p] : [p])));
+}
+
+// ---- a new deal turning up: the row slides in and glows, and a toast says what it is ------------------------------
+const seenIds = new Set();      // listings this page has already shown
+let seenReady = false;          // the first load is the baseline: nothing on it is "new"
+
+function toast(r) {
+  const v = r.valuation, cat = CATEGORY[r.category];
+  const t = h("button", { class: "toast " + r.category, type: "button", title: "See this listing" },
+    r.image ? h("img", { src: r.image, alt: "", referrerpolicy: "no-referrer" }) : null,
+    h("div", {}, h("div", { class: "tt" }, `New ${cat.label.toLowerCase()}: ${r.card ? r.card.name : r.title}`),
+      h("div", { class: "ts" }, h("span", { class: "tp" }, money(v.total_cost)), ` · worth ${money(v.fair_value)} · ${Math.round(v.discount * 100)}% cheaper`)));
+  const bye = () => { t.classList.add("leaving"); setTimeout(() => t.remove(), 400); };
+  t.addEventListener("click", () => { bye(); openListing(r); });
+  $("#toasts").append(t);
+  setTimeout(bye, 9000);
+}
+
+let arrivalsKey = "";
+function announceArrivals(result, key) {
+  if (key !== arrivalsKey) { arrivalsKey = key; seenIds.clear(); seenReady = false; }   // new filters: a new baseline
+  const fresh = result.rows.filter((r) => !seenIds.has(r.id));
+  for (const r of result.rows) seenIds.add(r.id);
+  if (!seenReady) { seenReady = true; return; }          // first load: just remember what is there
+  const deals = fresh.filter((r) => r.is_deal && r.valuation && (r.category === "steal" || r.category === "deal"));
+  for (const r of deals.slice(0, 12)) r._arrive = true;  // animate at most a dozen at once
+  setTimeout(() => { for (const r of deals) delete r._arrive; }, 4000);
+  for (const r of deals.slice(0, 3)) toast(r);
+  if (deals.length > 3) {
+    const more = h("button", { class: "toast", type: "button" }, h("div", {}, h("div", { class: "tt" }, `…and ${deals.length - 3} more new deals`)));
+    more.addEventListener("click", () => more.remove());
+    $("#toasts").append(more);
+    setTimeout(() => more.remove(), 6000);
+  }
+  if (deals.length) for (const c of new Set(deals.map((r) => r.category)))
+    setTimeout(() => { const chip = document.querySelector(`.chip.${c}`); if (chip) chip.classList.add("bump"); }, 50);
+}
+
+const CAT_ORDER = ["steal", "deal", "uncertain", "fair", "overpriced"];
+// by default the good stuff, plus the deals we cannot vouch for (they are flagged and point to eBay's sold listings)
+let catSel = new Set((store.get("cats2", "steal,deal,uncertain") || "").split(",").filter((c) => CATEGORY[c]));
+if (!catSel.size) catSel = new Set(["steal", "deal", "uncertain"]);
+
+function dealParams(extra = {}) {
+  const cats = [...CAT_ORDER.filter((c) => catSel.has(c)), ...($("#showSus").checked ? ["suspicious"] : []),
+    ...($("#showSkipped").checked ? ["skipped"] : [])];
+  const params = new URLSearchParams({ sort: $("#dealSort").value, cats: cats.join(","), ...extra });
+  if ($("#showHeld").checked) params.set("blocked", "true");
+  if ($("#fIntl").checked) params.set("intl", "true");
+  if ($("#watchOnly").checked) params.set("scope", "watchlist");
+  if ($("#q").value.trim()) params.set("q", $("#q").value.trim());
+  return params;
+}
+
+async function loadScan({ quiet = false } = {}) {
+  const btn = $("#refresh"), err = $("#scanError");
+  const seq = ++scanSeq;
+  if (!quiet) btn.disabled = true;
+  err.hidden = true;
+  if (!lastScan && !quiet) $("#summary").textContent = "Loading…";
+  try {
+    const params = dealParams();
+    const result = await api("/api/deals?" + params);
+    if (seq !== scanSeq) return;            // a newer load superseded this one
+    lastScan = result;
+    announceArrivals(result, params.toString());
+    drawScan();
+    drawFeedLine(result.feed);
+    loadCarousel();
+  } catch (e) {
+    if (seq !== scanSeq) return;
+    err.textContent = "Could not load deals: " + e.message; err.hidden = false;
+  } finally { if (seq === scanSeq) btn.disabled = false; }
+}
+
+// ---- the carousel of the best deals right now ---------------------------------------------------------------
+let carouselKey = "";
+function carouselCard(r) {
+  const v = r.valuation, cat = CATEGORY[r.category];
+  const b = h("button", { class: "ccard", type: "button", title: r.title },
+    h("div", { class: "cimg" }, h("img", { src: r.image, alt: "", loading: "lazy", referrerpolicy: "no-referrer" }),
+      h("span", { class: "cbadge pill " + r.category }, `${cat.label.toUpperCase()} ${Math.round(v.discount * 100)}% off`)),
+    h("div", { class: "cbody" },
+      h("div", { class: "cname" }, r.card ? r.card.name : r.title),
+      h("div", { class: "cset" }, r.card ? `${r.card.set} #${r.card.number}` : ""),
+      h("div", { class: "cprice" }, money(v.total_cost), h("s", {}, money(v.fair_value)))));
+  b.addEventListener("click", () => openListing(r));
+  return b;
+}
+
+async function loadCarousel() {
+  const box = $("#carouselBox");
+  try {
+    const params = new URLSearchParams({ cats: "steal,deal", sort: "savings" });
+    if ($("#fIntl").checked) params.set("intl", "true");
+    const d = await api("/api/deals?" + params);
+    const rows = d.rows.filter((r) => r.image && r.valuation && CATEGORY[r.category]).slice(0, 16);
+    box.hidden = rows.length === 0;
+    const key = rows.map((r) => r.id).join("|");
+    if (key === carouselKey) return;                    // nothing changed: do not restart the animation
+    carouselKey = key;
+    const track = $("#carouselTrack");
+    const cards = rows.map(carouselCard);
+    const loop = rows.length >= 5;                      // a short list just sits still
+    track.replaceChildren(...cards, ...(loop ? rows.map(carouselCard) : []));
+    track.style.animation = loop ? "" : "none";
+    track.style.setProperty("--dur", Math.max(40, rows.length * 6) + "s");
+  } catch { box.hidden = true; }
+}
+
+// "Check eBay now": ask the feed for an immediate cycle, then watch the status until it finishes.
+async function checkNow() {
+  const btn = $("#refresh");
+  if (!lastScan || !lastScan.feed) return loadScan();
+  btn.disabled = true; feedWaiting = true;
+  try {
+    await api("/api/feed/poll", { method: "POST" });
+    for (let i = 0; i < 90 && feedWaiting; i++) {          // up to ~3 minutes
+      await new Promise((r) => setTimeout(r, 2000));
+      const st = await api("/api/feed");
+      drawFeedLine({ ...lastScan.feed, ...st });
+      if (!st.cycling && i > 0) break;
+    }
+  } catch (e) {
+    $("#scanError").textContent = e.message; $("#scanError").hidden = false;
+  } finally { feedWaiting = false; btn.disabled = false; }
+  loadScan();
+}
+
+// The deals list updates itself: the feed finds new listings in the background and this picks them up.
+setInterval(() => {
+  if (!document.hidden && location.hash.replace("#", "") in { "": 1, deals: 1 } && lastScan && lastScan.feed && !feedWaiting)
+    loadScan({ quiet: true });
+}, 20000);
+
+function dealFilters() {
+  const save = parseFloat($("#fSave").value);
+  return { format: $("#fFormat").value, condition: $("#fCond").value,
+           minSavings: Number.isFinite(save) && save > 0 ? save : null, confirmed: $("#fConfirmed").checked };
+}
+
+const numOrNull = (el) => { const v = parseFloat(el.value); return Number.isFinite(v) && v >= 0 ? v : null; };
+
+function drawChips(counts) {
+  $("#catChips").replaceChildren(...CAT_ORDER.map((c) => {
+    const b = h("button", { class: "chip " + c, type: "button", "aria-pressed": String(catSel.has(c)), title: CATEGORY[c].tip },
+      h("span", { class: "dot" }), CATEGORY[c].label, h("span", { class: "n" }, counts && counts[c] != null ? String(counts[c]) : ""));
+    b.addEventListener("click", () => {
+      catSel.has(c) ? catSel.delete(c) : catSel.add(c);
+      store.set("cats2", [...catSel].join(","));
+      drawChips(lastScan && lastScan.counts);
+      loadScan({ quiet: true });
+    });
+    return b;
+  }));
+}
+
+function drawScan() {
+  if (!lastScan) return;
+  const minCost = numOrNull($("#minCost")), maxCost = numOrNull($("#maxCost"));
+  const emptyMsg = lastScan.empty_watchlist ? "Your watchlist is empty. Go to “Search cards”, find a card and click “☆ Watch”, then come back here." : null;
+  const filters = dealFilters();
+  const hidden = renderRows($("#deals"), lastScan.rows, { minCost, maxCost, emptyMsg, filters });
+  $("#fClear").hidden = !(filters.format || filters.condition || filters.minSavings != null || filters.confirmed);
+  const c = lastScan.counts || {};
+  drawChips(c);
+  $("#susCount").textContent = c.suspicious ? `(${c.suspicious})` : "";
+  $("#heldCount").textContent = c.blocked ? `(${c.blocked})` : "";
+  $("#skipCount").textContent = c.skipped ? `(${c.skipped})` : "";
+  const cut = lastScan.truncated || [];
+  $("#summary").textContent = `${plural(lastScan.deals, "steal/deal")} right now` +
+    (c.uncertain ? ` (+ ${c.uncertain} uncertain)` : "") + ` · ${lastScan.count.toLocaleString()} listings tracked` +
+    (hidden ? ` · ${hidden} hidden by your filters` : "") +
+    (cut.length ? ` · ⚠ ${plural(cut.length, "search")} cut off at the fetch cap` : "");
+  $("#summary").title = cut.map((t) => `“${t.query}”: fetched ${t.fetched} of ${t.total.toLocaleString()}`).join("\n");
+  $("#clearPrice").hidden = minCost == null && maxCost == null;
+}
+
+// controls that change WHAT the server returns reload it; the rest filter what is already here
+for (const [id, key] of [["showSus", "showSus"], ["showHeld", "showHeld"], ["showSkipped", "showSkipped"], ["fIntl", "fIntl"]]) {
+  $("#" + id).checked = store.get(key, "0") === "1";
+  $("#" + id).addEventListener("change", () => { store.set(key, $("#" + id).checked ? "1" : "0"); loadScan({ quiet: true }); });
+}
+
+$("#watchOnly").checked = store.get("watchOnly", "0") === "1";
+$("#watchOnly").addEventListener("change", () => {
+  store.set("watchOnly", $("#watchOnly").checked ? "1" : "0");
+  loadScan();
+});
+
+for (const id of ["minCost", "maxCost"]) {
+  $("#" + id).value = store.get(id, "");
+  $("#" + id).addEventListener("input", () => { store.set(id, $("#" + id).value); drawScan(); });
+}
+for (const [id, key] of [["fFormat", "fFormat"], ["fCond", "fCond"], ["fSave", "fSave"]]) {
+  $("#" + id).value = store.get(key, "");
+  $("#" + id).addEventListener("input", () => { store.set(key, $("#" + id).value); drawScan(); });
+}
+$("#fConfirmed").checked = store.get("fConfirmed", "0") === "1";
+$("#fConfirmed").addEventListener("change", () => { store.set("fConfirmed", $("#fConfirmed").checked ? "1" : "0"); drawScan(); });
+$("#fClear").addEventListener("click", () => {
+  for (const id of ["fFormat", "fCond", "fSave"]) { $("#" + id).value = ""; store.set(id, ""); }
+  $("#fConfirmed").checked = false; store.set("fConfirmed", "0");
+  drawScan();
+});
+$("#clearPrice").addEventListener("click", () => {
+  for (const id of ["minCost", "maxCost"]) { $("#" + id).value = ""; store.set(id, ""); }
+  drawScan();
+});
+
+$("#refresh").addEventListener("click", checkNow);
+let filterTimer = null;
+$("#q").addEventListener("input", () => { clearTimeout(filterTimer); filterTimer = setTimeout(loadScan, 300); });
+$("#dealSort").value = ["savings", "newest", "profit"].includes(store.get("dealSort", "")) ? store.get("dealSort", "savings") : "savings";
+$("#dealSort").addEventListener("change", () => { store.set("dealSort", $("#dealSort").value); loadScan(); });
+drawChips(null);
+
+// ---- cards: search results + watchlist, each expandable into a listings comparison -------------
+let watchlist = [];          // cards on the watchlist
+let searchResults = null;    // null = no active search; otherwise every page loaded so far
+let searchTotal = 0;         // how many cards match in total (may exceed searchResults.length)
+let searchSeq = 0, searchTimer = null;
+const CARD_PAGE = 20, ROW_PAGE = 25;
+
+const compare = new Map();   // card id -> { state: "loading"|"ready"|"error", data, error, showExcluded }
+const expanded = new Set();  // "<table>:<card id>" keys whose listings panel is open
+const TABLES = { search: "#resultsTable", watch: "#watched", set: "#setCards" };
+
+const NA = () => h("span", { class: "sub", title: "This print does not exist for the card, or has no price" }, "N/A");
+
+// One price per card, never a range: the average of its regular prints (a single print for almost every
+// card). Reverse holo and 1st Edition (stamped) prices sit beside it rather than being averaged in.
+function marketCell(c) {
+  if (c.market_price == null) return NA();
+  const tip = c.regular_count > 1
+    ? `Average of ${c.regular_count} regular prints. Open the card for each print's price.`
+    : "TCGplayer market price of the regular print";
+  return h("span", { title: tip }, money(c.market_price), c.regular_count > 1 ? h("div", { class: "note" }, `avg of ${c.regular_count}`) : null);
+}
+
+function altCell(c) {
+  const parts = [];
+  if (c.reverse_price != null) parts.push(["reverse holo", c.reverse_price]);
+  if (c.stamped_price != null) parts.push(["1st edition", c.stamped_price]);
+  if (c.shadowless_price != null) parts.push(["shadowless", c.shadowless_price]);
+  if (!parts.length) return NA();
+  return h("span", {}, parts.map(([kind, price]) => h("div", {}, money(price), h("span", { class: "note" }, ` ${kind}`))));
+}
+
+function cardRow(c, ctx) {
+  const thumb = safeUrl(c.thumb);
+  const isOpen = expanded.has(ctx + ":" + c.id);
+
+  const listBtn = h("button", { class: "ghost small", type: "button", "aria-expanded": String(isOpen),
+    title: "See current eBay listings for this card and how they compare with its market price" },
+    isOpen ? "Hide eBay listings" : "See eBay listings");
+  listBtn.addEventListener("click", () => toggleCompare(ctx, c));
+  const watchBtn = h("button", {
+    class: "small" + (c.watched ? " ghost" : ""), type: "button",
+    "aria-label": `${c.watched ? "Remove" : "Add"} ${c.name} ${c.watched ? "from" : "to"} watchlist`,
+    title: c.watched ? "Stop watching this card" : "Watch this card: the Deals tab can then look only for your watched cards",
+  }, c.watched ? "★ Watching" : "☆ Watch");
+  watchBtn.addEventListener("click", () => toggleWatch(c, watchBtn));
+
+  const thumbBtn = thumb ? h("button", { class: "linklike", type: "button", "aria-label": `View larger image of ${c.name}` },
+    h("img", { src: thumb, alt: "", width: 36, height: 50, loading: "lazy" })) : null;
+  if (thumbBtn) thumbBtn.addEventListener("click", () => openCard(c.id, ctx));
+
+  return h("tr", {},
+    h("td", { class: "thumb" }, thumbBtn),
+    h("td", {}, cardLink(c.id, c.name, ctx), h("div", { class: "note" },
+      `${c.set_name} · #${c.local_id}${c.official_count ? "/" + c.official_count : ""}${c.rarity ? " · " + c.rarity : ""}`)),
+    h("td", { class: "num" }, marketCell(c)),
+    h("td", { class: "num" }, altCell(c)),
+    h("td", { class: "num actions" }, listBtn, " ", soldLink(c), " ", watchBtn));
+}
+
+function drawCards(ctx, cards, emptyMsg) {
+  const body = [];
+  for (const c of cards) {
+    body.push(cardRow(c, ctx));
+    if (expanded.has(ctx + ":" + c.id))
+      body.push(h("tr", { class: "detail" }, h("td", { colspan: 5 }, comparePanel(c, compare.get(c.id)))));
+  }
+  $(TABLES[ctx]).replaceChildren(
+    h("thead", {}, h("tr", {}, h("th", {}, ""), h("th", {}, "Card"),
+      h("th", { class: "num", title: "TCGplayer market price of the regular print (average if a card has several)" },
+        "Market price"),
+      h("th", { class: "num", title: "Prices of special prints of the card: reverse holofoil, 1st Edition or Shadowless. N/A means that print doesn't exist" },
+        "Other prints"),
+      h("th", {}, ""))),
+    h("tbody", {}, body.length ? body : h("tr", {}, h("td", { colspan: 5, class: "empty" }, emptyMsg))),
+  );
+}
+
+function drawWatched() {
+  drawCards("watch", watchlist, "Nothing watched yet. Use Search to find a card and click Add.");
+  const n = watchlist.length;
+  $("#watchSummary").textContent = n ? `· ${plural(n, "card")}` : "";
+  $("#watchCount").textContent = n ? `(${n})` : "";
+  $("#navWatch").textContent = n ? `(${n})` : "";
+}
+
+function drawResults(text) {
+  $("#results").hidden = searchResults === null;
+  $("#searchHint").hidden = searchResults !== null;
+  if (searchResults === null) return;
+  drawCards("search", searchResults, `No cards match “${text ?? $("#cardQ").value.trim()}”.`);
+
+  const foot = $("#resultsFoot"), shown = searchResults.length;
+  foot.replaceChildren();
+  if (!shown) return;
+  if (searchTotal > shown) {
+    const more = h("button", { class: "ghost small", type: "button", id: "moreCards" },
+      `Show ${Math.min(CARD_PAGE, searchTotal - shown)} more`);
+    more.addEventListener("click", loadMoreCards);
+    foot.append(h("span", { class: "sub" }, `Showing ${shown} of ${searchTotal.toLocaleString()} matches`), more,
+      searchTotal > 100 ? h("span", { class: "sub" }, "Add more words to narrow it down, e.g. a set name or card number.") : null);
+  } else {
+    foot.append(h("span", { class: "sub" }, `All ${searchTotal} match${searchTotal === 1 ? "" : "es"} shown`));
+  }
+}
+
+const redrawCards = () => { drawResults(); drawWatched(); drawSetCards(); };
+
+async function loadWatchlist() {
+  watchlist = (await api("/api/watchlist")).cards;
+  const ids = new Set(watchlist.map((c) => c.id));
+  for (const list of [searchResults, currentSet?.cards]) if (list) for (const c of list) c.watched = ids.has(c.id);
+  redrawCards();
+}
+
+async function runSearch() {
+  const text = $("#cardQ").value.trim();
+  const seq = ++searchSeq;
+  if (text.length < 2) { searchResults = null; searchTotal = 0; drawResults(); return; }
+  try {
+    const r = await api(`/api/cards?limit=${CARD_PAGE}&sort=${$("#cardSort").value}&q=` + encodeURIComponent(text));
+    if (seq !== searchSeq) return;          // stale response
+    searchResults = r.cards;
+    searchTotal = r.total;
+    drawResults(text);
+  } catch (e) {
+    if (seq !== searchSeq) return;
+    searchResults = [];
+    searchTotal = 0;
+    drawResults(text);
+    $("#resultsTable").querySelector(".empty").textContent = "Search failed: " + e.message;
+  }
+}
+
+async function loadMoreCards() {
+  const text = $("#cardQ").value.trim(), seq = searchSeq, btn = $("#moreCards");
+  btn.disabled = true;
+  try {
+    const r = await api(`/api/cards?limit=${CARD_PAGE}&offset=${searchResults.length}&sort=${$("#cardSort").value}` +
+      `&q=` + encodeURIComponent(text));
+    if (seq !== searchSeq) return;          // the query changed while this page was loading
+    const have = new Set(searchResults.map((c) => c.id));
+    searchResults = searchResults.concat(r.cards.filter((c) => !have.has(c.id)));
+    searchTotal = r.total;
+    drawResults(text);
+  } catch (e) {
+    btn.disabled = false;
+    $("#resultsFoot").append(h("span", { class: "error" }, "Could not load more: " + e.message));
+  }
+}
+
+async function toggleWatch(card, btn) {
+  btn.disabled = true;
+  try {
+    if (card.watched) {
+      await api("/api/watchlist/" + encodeURIComponent(card.id), { method: "DELETE" });
+    } else {
+      await api("/api/watchlist", { method: "POST", headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ card_id: card.id }) });
+    }
+    await loadWatchlist();
+    // Rescan when the result set depends on the watchlist. In live mode with "watchlist only" off a
+    // rescan would spend eBay API calls just to move a star, so that waits for the next Refresh.
+    loadScan({ quiet: true });
+  } catch (e) {
+    btn.disabled = false;
+    $("#scanError").textContent = "Watchlist update failed: " + e.message;
+    $("#scanError").hidden = false;
+  }
+}
+
+// The sort is applied by the server (so every page of results is in one consistent order); changing
+// it restarts the search from the first page.
+$("#cardSort").value = ["relevance", "price_desc", "price_asc"].includes(store.get("cardSort", ""))
+  ? store.get("cardSort", "relevance") : "relevance";
+$("#cardSort").addEventListener("change", () => { store.set("cardSort", $("#cardSort").value); runSearch(); });
+
+$("#cardQ").addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(runSearch, 250); });
+$("#cardQ").addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { $("#cardQ").value = ""; ++searchSeq; searchResults = null; drawResults(); }
+});
+
+// ---- listings comparison panel ---------------------------------------------------------------
+async function toggleCompare(ctx, card) {
+  const key = ctx + ":" + card.id;
+  if (expanded.has(key)) { expanded.delete(key); redrawCards(); return; }
+  expanded.add(key);
+  if (compare.has(card.id)) redrawCards(); else await fetchCompare(card.id);
+}
+
+// maxResults: how many eBay listings to pull (server default when null). Kept across refreshes so
+// "Refresh" re-fetches at the depth the user last asked for.
+async function fetchCompare(id, maxResults = compare.get(id)?.maxResults ?? null) {
+  const keep = compare.get(id)?.showExcluded ?? false;
+  const keepSus = compare.get(id)?.showSuspicious ?? false;
+  compare.set(id, { state: "loading", showExcluded: keep, showSuspicious: keepSus, maxResults });
+  redrawCards();
+  try {
+    const qs = maxResults ? "?max_results=" + maxResults : "";
+    const data = await api(`/api/cards/${encodeURIComponent(id)}/listings` + qs);
+    compare.set(id, { state: "ready", data, showExcluded: keep, showSuspicious: keepSus, maxResults, visible: ROW_PAGE });
+  } catch (e) {
+    compare.set(id, { state: "error", error: e.message, showExcluded: keep, showSuspicious: keepSus, maxResults });
+  }
+  redrawCards();
+}
+
+const underOver = (frac) => {
+  if (frac == null) return h("span", { class: "sub" }, "—");
+  const pct = Math.round(Math.abs(frac) * 100);
+  return frac >= 0 ? h("span", { class: "good" }, pct + "% cheaper") : h("span", { class: "bad" }, pct + "% pricier");
+};
+
+function stat(label, value, sub) {
+  return h("div", { class: "stat" }, h("div", { class: "k" }, label), h("div", { class: "v" }, value),
+    sub ? h("div", { class: "s" }, sub) : null);
+}
+
+function compareRow(r) {
+  const v = r.valuation;
+  const cls = r.status === "suspicious" ? "sus" : r.blocked || !v ? "rejected" : r.category;
+  return h("tr", { class: cls },
+    h("td", {}, statusPill(r)),
+    listingCell(r),
+    h("td", { class: "num" }, h("div", { class: "price-line" }, v ? money(v.total_cost) : money(r.price + (r.shipping || 0)), condChip(r)),
+      h("div", { class: "note" }, `${money(r.price)} + ${r.shipping == null ? "?" : money(r.shipping)} shipping`)),
+    h("td", { class: "vs" }, v ? underOver((v.market - v.total_cost) / v.market) : underOver(null),
+      v ? h("div", { class: "note" }, `market ${money(v.market)}`) : null),
+    h("td", { class: "vs" }, v ? [discountCell(v), ebayNote(v)] : discountCell(null)),
+    h("td", { class: "num" }, resaleCell(v)));
+}
+
+function comparePanel(card, st) {
+  const box = h("div", { class: "compare" });
+  if (!st || st.state === "loading") { box.append(h("div", { class: "sub" }, "Fetching listings from eBay… this can take a few seconds.")); return box; }
+
+  const again = h("button", { class: "ghost small", type: "button" }, st.state === "error" ? "Retry" : "Refresh listings");
+  again.addEventListener("click", () => fetchCompare(card.id));
+  if (st.state === "error") {
+    box.append(h("div", { class: "error" }, "Could not load listings: " + st.error), h("div", { style: "margin-top:8px" }, again));
+    return box;
+  }
+
+  const d = st.data, s = d.stats;
+  const vs = (cost) => (s.reference_market && cost != null ? (s.reference_market - cost) / s.reference_market : null);
+  const pctText = (cost) => { const f = vs(cost); return f == null ? "" : `${Math.round(Math.abs(f) * 100)}% ${f >= 0 ? "cheaper" : "pricier"} than market`; };
+
+  box.append(h("div", { class: "stats" },
+    stat("Market price (TCGplayer)", s.reference_market != null ? money(s.reference_market) : "—", s.reference_variant),
+    stat("Cheapest listing", money(s.cheapest), pctText(s.cheapest)),
+    stat("Typical listing", money(s.median), pctText(s.median)),
+    stat("Listings", String(s.listings), s.suspicious ? `${s.suspicious} suspicious left out` : null)));
+
+  // Coverage: say how much of what eBay matched we actually looked at.
+  const f = d.fetch;
+  if (f.truncated) {
+    const bar = h("div", { class: "coverage" },
+      `eBay matched ${f.available.toLocaleString()} results for “${d.query}”; only the first ${f.fetched.toLocaleString()} were fetched ` +
+      `(${plural(s.listings + s.excluded, "listing")} of those are this card), so cheaper ones may be missing.`);
+    if (f.requested < f.max) {
+      const more = h("button", { class: "ghost small", type: "button" }, `Fetch up to ${f.max.toLocaleString()}`);
+      more.addEventListener("click", () => fetchCompare(card.id, f.max));
+      bar.append(more);
+    } else {
+      bar.append(h("span", {}, `That is the ${f.max.toLocaleString()} limit: narrow the search on eBay.`));
+    }
+    box.append(bar);
+  }
+
+  const all = d.rows.filter((r) => (r.status === "suspicious" ? st.showSuspicious : r.valuation ? true : st.showExcluded));
+  const rows = all.slice(0, st.visible ?? ROW_PAGE);
+  box.append(h("div", { class: "table-wrap" }, h("table", {},
+    h("thead", {}, h("tr", {}, h("th", {}, ""), h("th", {}, "Listing"),
+      h("th", { class: "num", title: "Item price plus shipping" }, "You pay"),
+      h("th", { title: "Compared with the card's TCGplayer market price (Near Mint)" }, "vs market"),
+      h("th", { title: "Compared with what the card is worth in the listing's condition" }, "Savings"),
+      h("th", { class: "num", title: "Profit if you resold it on eBay at its worth, after fees and postage" }, "If you resell"))),
+    h("tbody", {}, rows.length ? rows.map(compareRow)
+      : h("tr", {}, h("td", { colspan: 6, class: "empty" },
+          d.rows.length ? "Nothing to show: every listing was left out (graded, lots, proxies, or suspicious). Use the boxes below to see them."
+          : d.mode === "sample" ? "No sample listings for this card. The bundled sample data only covers a few cards; connect eBay for live listings."
+          : "No listings found for this card right now."))))));
+
+  const foot = h("div", { class: "compare-foot" });
+  if (all.length > rows.length) {
+    const left = all.length - rows.length;
+    const more = h("button", { class: "ghost small", type: "button" }, `Show ${Math.min(ROW_PAGE, left)} more`);
+    more.addEventListener("click", () => { st.visible = (st.visible ?? ROW_PAGE) + ROW_PAGE; redrawCards(); });
+    foot.append(h("span", { class: "sub" }, `Showing ${rows.length} of ${all.length} listings`), more);
+  } else if (all.length > ROW_PAGE) {
+    foot.append(h("span", { class: "sub" }, `All ${all.length} listings shown`));
+  }
+  if (!f.truncated && f.available != null)
+    foot.append(h("span", { class: "sub" },
+      `Fetched all ${f.available.toLocaleString()} ${d.mode === "sample" ? "sample" : "eBay"} results for this search`));
+  foot.append(again);
+  if (s.suspicious) {
+    const cb = h("input", { type: "checkbox" });
+    cb.checked = !!st.showSuspicious;
+    cb.addEventListener("change", () => { st.showSuspicious = cb.checked; redrawCards(); });
+    foot.append(h("label", { title: "Priced so low, or from such a risky seller, that they are probably fakes or scams" },
+      cb, ` show ${s.suspicious} suspicious`));
+  }
+  if (s.excluded) {
+    const cb = h("input", { type: "checkbox" });
+    cb.checked = st.showExcluded;
+    cb.addEventListener("change", () => { st.showExcluded = cb.checked; redrawCards(); });
+    foot.append(h("label", {}, cb, ` show ${s.excluded} other skipped (graded, lots, proxies…)`));
+  }
+  foot.append(h("a", { href: "https://www.ebay.com/sch/i.html?_nkw=" + encodeURIComponent(d.query),
+    target: "_blank", rel: "noopener noreferrer" }, "Search “" + d.query + "” on eBay ↗"));
+  foot.append(soldLink(card));
+  if (d.mode === "sample") foot.append(h("span", { class: "sub" }, "Sample mode: showing the bundled sample listings only."));
+  box.append(foot);
+  return box;
+}
+
+// ---- tools tab --------------------------------------------------------------------------------
+function applyCalcHidden() {
+  const hide = store.get("hideCalc", "0") === "1";
+  $("#toolCalc").hidden = hide;
+  $("#calcToggle").textContent = hide ? "Show" : "Hide";
+  $("#calcToggle").setAttribute("aria-expanded", String(!hide));
+}
+$("#calcToggle").addEventListener("click", () => {
+  store.set("hideCalc", store.get("hideCalc", "0") === "1" ? "0" : "1");
+  applyCalcHidden();
+});
+applyCalcHidden();
+
+function showZip(zip) {
+  const input = $("#zipInput");
+  if (document.activeElement !== input) input.value = zip;
+  $("#zipMsg").textContent = zip
+    ? `Shipping is priced to ${zip} for listings found from now on.`
+    : "No ZIP set: listings with calculated shipping are assumed to cost $4.50 (marked \"shipping-assumed\").";
+}
+
+async function saveZip(zip) {
+  const msg = $("#zipMsg");
+  $("#zipSave").disabled = $("#zipClear").disabled = true;
+  try {
+    const r = await api("/api/settings/zip", { method: "PUT", headers: { "Content-Type": "application/json" },
+                                               body: JSON.stringify({ zip }) });
+    $("#zipInput").value = r.buyer_zip;
+    showZip(r.buyer_zip);
+    if (typeof loadScan === "function") loadScan();     // re-price the deals feed with the new destination
+  } catch (ex) {
+    msg.textContent = ex.message;
+  } finally { $("#zipSave").disabled = $("#zipClear").disabled = false; }
+}
+$("#zipForm").addEventListener("submit", (e) => { e.preventDefault(); saveZip($("#zipInput").value.trim()); });
+$("#zipClear").addEventListener("click", () => saveZip(""));
+
+$("#tryForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = $("#tGo"), err = $("#tryError");
+  btn.disabled = true; err.hidden = true;
+  try {
+    const body = { title: $("#tTitle").value, price: parseFloat($("#tPrice").value),
+                   shipping: $("#tShip").value === "" ? null : parseFloat($("#tShip").value) };
+    const r = await api("/api/evaluate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    r.url = ""; // manual listings have no link
+    renderRows($("#tryTable"), [r]);
+    $("#tryOut").hidden = false;
+    const p = r.parsed;
+    $("#tryParsed").textContent =
+      `parsed → number ${p.number ?? "none"}${p.denominator ? " / " + p.denominator : ""}` +
+      ` · finish ${p.finish ?? "unstated"} · 1st ed ${p.first_edition ? "yes" : "no"}` +
+      ` · condition ${p.condition ?? "unstated"}` + (p.skip.length ? " · skipped: " + p.skip.join(", ") : "");
+  } catch (ex) {
+    err.textContent = ex.message; err.hidden = false;
+  } finally { btn.disabled = false; }
+});
+
+// ---- resale calculator ------------------------------------------------------------------------
+const signed = (n) => (n < 0 ? "−" : "") + "$" + Math.abs(n).toFixed(2);
+
+function rulesDetails(rules) {
+  let prev = null;
+  const rows = rules.tiers.map((t) => {
+    const range = t.upto == null ? `over $${prev.toFixed(2)}`
+      : prev == null ? `up to $${t.upto.toFixed(2)}`
+      : `$${(prev + 0.01).toFixed(2)} – $${t.upto.toFixed(2)}`;
+    if (t.upto != null) prev = t.upto;
+    return h("tr", {}, h("td", {}, range), h("td", {}, t.label, t.note ? h("div", { class: "note" }, t.note) : null),
+      h("td", { class: "num" }, money(t.cost)), h("td", {}, t.verified ? "eBay rate" : "estimate"));
+  });
+  return h("details", { class: "rules" },
+    h("summary", {}, "Fee and shipping rules used"),
+    h("div", {}, `Final value fee ${(rules.fvf_rate * 100).toFixed(2)}% of the total sale (item + shipping charged + sales tax) ` +
+      `up to ${money(rules.fvf_cap)}, ${(rules.fvf_rate_above_cap * 100).toFixed(2)}% above. ` +
+      `Per-order fee ${money(rules.order_fee_small)} up to ${money(rules.order_fee_threshold)}, ${money(rules.order_fee_large)} above. ` +
+      `Packaging default ${money(rules.packaging)} (estimate). Cards $20 and over cannot use the Standard Envelope.`),
+    h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "Card price"), h("th", {}, "Postage method"),
+      h("th", { class: "num" }, "Cost"), h("th", {}, "Basis"))), h("tbody", {}, rows)),
+    h("div", { class: "note" }, "Change estimates in pokedeals/profit.py. Confirm current rates on eBay before relying on them."));
+}
+
+function breakdownEls(b, rules) {
+  const row = (label, amount, cls = "", note = null) =>
+    h("tr", { class: cls }, h("td", {}, label, note ? h("div", { class: "note" }, note) : null),
+      h("td", { class: "num" }, amount));
+  const rows = [row("Sale price", money(b.sale_price))];
+  if (b.shipping_charged) rows.push(row("+ Shipping charged to buyer", money(b.shipping_charged)));
+  const taxed = Math.abs(b.fee_base - (b.sale_price + b.shipping_charged)) > 0.004;
+  rows.push(row(`− Final value fee (${(rules.fvf_rate * 100).toFixed(2)}%)`, "−" + money(b.final_value_fee), "minus",
+    taxed ? `charged on ${money(b.fee_base)} including sales tax` : null));
+  rows.push(row("− Per-order fee", "−" + money(b.order_fee), "minus"));
+  if (b.ad_fee) rows.push(row("− Promoted listing fee", "−" + money(b.ad_fee), "minus"));
+  rows.push(row("= Paid out by eBay", money(b.net_proceeds), "total"));
+  rows.push(row("− Postage", "−" + money(b.postage), "minus",
+    b.postage_label + (b.postage_verified ? "" : " · estimate")));
+  rows.push(row("− Packaging", "−" + money(b.packaging), "minus"));
+  if (b.cost_basis) rows.push(row("− What you paid", "−" + money(b.cost_basis), "minus"));
+  const good = b.profit >= 0;
+  rows.push(h("tr", { class: "total" },
+    h("td", {}, "= Profit", b.roi != null ? h("div", { class: "note" }, `${Math.round(b.roi * 100)}% return on what you paid`) : null),
+    h("td", { class: "num " + (good ? "profit-good" : "profit-bad") }, signed(b.profit))));
+  if (b.break_even_price != null)
+    rows.push(row("Break-even sale price", money(b.break_even_price), "", "lowest price that doesn't lose money"));
+  return [h("table", {}, h("tbody", {}, rows)),
+    ...b.warnings.map((w) => h("div", { class: "calc-warn" }, "⚠ " + w)), rulesDetails(rules)];
+}
+
+// A self-contained calculator. Every number comes from /api/profit, so the rules live in one place.
+function calculator({ sale = "", cost = "" } = {}) {
+  const el = {};
+  let timer = null, seq = 0;
+  const out = h("div", { class: "calc-out" });
+
+  const field = (key, label, value, placeholder) => {
+    el[key] = h("input", { type: "number", min: "0", step: "0.01", inputmode: "decimal",
+                           placeholder, "aria-label": label });
+    el[key].value = value;
+    el[key].addEventListener("input", schedule);
+    return h("div", {}, h("label", {}, label), el[key]);
+  };
+  const root = h("div", { class: "calc" },
+    h("div", { class: "calc-grid" },
+      field("sale", "Sell it for ($)", sale, "e.g. 50"),
+      field("cost", "What you paid ($)", cost, "0"),
+      field("shipping_charged", "Shipping you charge ($)", "", "0 = free shipping"),
+      field("tax_pct", "Buyer sales tax (%)", "", "0"),
+      field("ad_pct", "Promoted listing fee (%)", "", "0"),
+      field("packaging", "Packaging ($)", "", "default"),
+      field("postage", "Postage override ($)", "", "auto by card price")),
+    out);
+
+  function schedule() { clearTimeout(timer); timer = setTimeout(run, 150); }
+
+  async function run() {
+    const s = parseFloat(el.sale.value);
+    if (!Number.isFinite(s) || s < 0) {
+      out.replaceChildren(h("div", { class: "sub" }, "Enter a sale price to see the breakdown."));
+      return;
+    }
+    const p = new URLSearchParams({ sale: String(s) });
+    for (const k of ["cost", "shipping_charged", "tax_pct", "ad_pct", "packaging", "postage"]) {
+      const v = parseFloat(el[k].value);
+      if (Number.isFinite(v) && v >= 0) p.set(k, String(v));
+    }
+    const mine = ++seq;
+    try {
+      const r = await api("/api/profit?" + p);
+      if (mine === seq) out.replaceChildren(...breakdownEls(r.breakdown, r.rules));
+    } catch (e) {
+      if (mine === seq) out.replaceChildren(h("div", { class: "error" }, "Could not calculate: " + e.message));
+    }
+  }
+
+  schedule();
+  return { el: root, setSale(v) { el.sale.value = v; schedule(); } };
+}
+
+// ---- card detail dialog: large image, every variant's price, and the calculator ----------------
+const dlg = $("#cardDialog");
+dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });   // click on the backdrop
+
+const VARIANT_NAMES = {
+  normal: "Normal", holofoil: "Holo", "reverse-holofoil": "Reverse holo", unlimited: "Unlimited",
+  "unlimited-holofoil": "Unlimited holo", "1st-edition": "1st Edition", "1st-edition-holofoil": "1st Edition holo",
+  "shadowless-holofoil": "Shadowless holo", "shadowless-normal": "Shadowless",
+};
+const variantName = (v) => VARIANT_NAMES[v] || v.replace(/-/g, " ");
+
+// The price shown for the card in lists (average of its regular prints), so the calculator starts from
+// the same number the user just saw. Falls back to a reverse / 1st Edition price if that is all it has.
+function representativePrice(prices) {
+  const priced = prices.filter((p) => p.market > 0);
+  const regular = priced.filter((p) => p.variant !== "reverse-holofoil" && !p.variant.startsWith("1st-edition")
+    && !p.variant.startsWith("shadowless"));
+  if (regular.length) return regular.reduce((s, p) => s + p.market, 0) / regular.length;
+  return priced.length ? Math.min(...priced.map((p) => p.market)) : null;
+}
+
+async function openCard(cardId, ctx = null) {
+  const body = $("#cardDialogBody");
+  body.replaceChildren(h("div", { class: "sub", style: "padding:18px" }, "Loading…"));
+  if (!dlg.open) dlg.showModal();
+  try {
+    renderCardDialog(await api("/api/cards/" + encodeURIComponent(cardId)), ctx);
+  } catch (e) {
+    body.replaceChildren(h("div", { class: "error", style: "padding:18px" }, "Could not load card: " + e.message));
+  }
+}
+
+// Price by condition, read live from TCGplayer's own listings (cached by the server for a few hours).
+const condCache = new Map();
+function conditionSection(card) {
+  const box = h("div", {}, h("div", { class: "sub" }, "Looking up TCGplayer listings by condition…"));
+  const draw = (data) => {
+    if (!data.available) { box.replaceChildren(h("div", { class: "sub" }, "Condition prices are switched off.")); return; }
+    if (!data.variants.length) { box.replaceChildren(h("div", { class: "sub" }, "TCGplayer has no listings for this card right now.")); return; }
+    const blocks = data.variants.map((v) => h("div", { class: "table-wrap" }, h("table", { style: "min-width:0" },
+      h("thead", {}, h("tr", {}, h("th", {}, data.variants.length > 1 ? variantName(v.variant) : "Condition"),
+        h("th", { class: "num", title: "TCGplayer's market price for this condition, built from recent sales. This is what the deal finder uses." }, "Market price"),
+        h("th", { class: "num", title: "Sales in the last 3 months behind that price" }, "Sold (3 mo)"),
+        h("th", { class: "num", title: "Cheapest listing for sale right now" }, "Cheapest now"),
+        h("th", { class: "num" }, "For sale"))),
+      h("tbody", {}, v.conditions.length ? v.conditions.map((c) => h("tr", {},
+        h("td", {}, c.name),
+        h("td", { class: "num" }, c.usable
+          ? h("span", {}, money(c.market), c.sold < 5 ? h("span", { class: "sub", title: "Few recent sales: this price may not be reliable" }, " ⚠") : null)
+          : h("span", { class: "sub", title: "TCGplayer has no price for this condition: the deal finder estimates it" }, "no price")),
+        h("td", { class: "num" }, String(c.sold)),
+        h("td", { class: "num" }, money(c.lowest)),
+        h("td", { class: "num" }, String(c.listings))))
+        : h("tr", {}, h("td", { colspan: 5, class: "empty" }, "No data."))))));
+    box.replaceChildren(...blocks, h("div", { class: "note" },
+      "Market price comes from TCGplayer's recent sales for each condition, the same number its own page shows. ⚠ means fewer than 5 sales in 3 months, so treat it with care; deals measured against such a price are marked Uncertain."));
+  };
+  if (condCache.has(card.id)) draw(condCache.get(card.id));
+  else api(`/api/cards/${encodeURIComponent(card.id)}/conditions`)
+    .then((d) => { condCache.set(card.id, d); draw(d); })
+    .catch((e) => box.replaceChildren(h("div", { class: "error" }, "Could not read TCGplayer: " + e.message)));
+  return box;
+}
+
+// The card's page on TCGplayer: the product behind its representative (cheapest regular) price.
+function tcgplayerLink(prices) {
+  const p = prices.find((x) => x.product_id && x.market > 0 && !["reverse-holofoil"].includes(x.variant)) || prices.find((x) => x.product_id);
+  return p ? h("a", { class: "btn ghost", href: `https://www.tcgplayer.com/product/${p.product_id}?Language=English`, target: "_blank",
+    rel: "noopener noreferrer", title: "Open this card's page on TCGplayer" }, "View on TCGplayer ↗") : null;
+}
+
+function renderCardDialog(data, ctx) {
+  const { card, prices } = data;
+  const img = safeUrl(card.image_large);
+  const picture = img
+    ? h("a", { href: img, target: "_blank", rel: "noopener noreferrer", title: "Open the full-size image" },
+        h("img", { class: "big", src: img, alt: card.name }))
+    : h("div", { class: "noimg" }, "No image available");
+
+  const close = h("button", { class: "ghost small", type: "button", "aria-label": "Close" }, "Close ✕");
+  close.addEventListener("click", () => dlg.close());
+
+  const priceRows = prices.map((p) => h("tr", {},
+    h("td", {}, variantName(p.variant)), h("td", { class: "num" }, money(p.market)),
+    h("td", { class: "num" }, money(p.low)), h("td", { class: "num" }, money(p.mid)), h("td", { class: "num" }, money(p.high))));
+  const priceTable = prices.length
+    ? h("div", { class: "table-wrap" }, h("table", { style: "min-width:0" },
+        h("thead", {}, h("tr", {}, h("th", {}, "Variant"), h("th", { class: "num" }, "Market"),
+          h("th", { class: "num" }, "Low"), h("th", { class: "num" }, "Mid"), h("th", { class: "num" }, "High"))),
+        h("tbody", {}, priceRows)))
+    : h("div", { class: "sub" }, "No TCGplayer price for this card.");
+
+  // Where the numbers came from: the daily TCGplayer feed where a card matched, else TCGdex's snapshot.
+  const SOURCES = { tcgcsv: "TCGplayer price feed (tcgcsv.com, daily)", tcgdex: "TCGdex's TCGplayer snapshot" };
+  const asOf = prices.map((p) => p.updated).filter(Boolean).sort().pop();
+  const sourceNote = prices.length ? h("div", { class: "note", style: "margin-top:6px" },
+    "Source: " + [...new Set(prices.map((p) => SOURCES[p.source] || p.source))].join(" + ") +
+    (asOf ? " · as of " + asOf.slice(0, 10) : "")) : null;
+
+  const watchBtn = h("button", { class: card.watched ? "ghost" : "", type: "button" },
+    card.watched ? "Remove from watchlist" : "Add to watchlist");
+  watchBtn.addEventListener("click", async () => {
+    watchBtn.disabled = true;
+    try {
+      if (card.watched) await api("/api/watchlist/" + encodeURIComponent(card.id), { method: "DELETE" });
+      else await api("/api/watchlist", { method: "POST", headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ card_id: card.id }) });
+      card.watched = !card.watched;
+      await loadWatchlist();
+      renderCardDialog(data, ctx);
+    } catch (e) { watchBtn.disabled = false; }
+  });
+
+  const listBtn = h("button", { class: "ghost", type: "button" }, "Show eBay listings");
+  listBtn.addEventListener("click", () => {
+    dlg.close();
+    if (ctx) {
+      if (!expanded.has(ctx + ":" + card.id)) toggleCompare(ctx, card);
+    } else {                      // opened from the deals feed: hand off to Search with this card typed in
+      $("#cardQ").value = `${card.name} ${card.local_id}${card.official_count ? "/" + card.official_count : ""}`;
+      location.hash = "search";
+      runSearch();
+    }
+  });
+
+  // calculator: sale price defaults to the card's market price, "what you paid" is left for you
+  const rep = representativePrice(prices);            // the same number the card shows in lists
+  const calc = calculator({ sale: rep != null ? rep.toFixed(2) : "", cost: "" });
+  const sources = prices.filter((p) => p.market > 0);
+  const regularCount = sources.filter((p) => p.variant !== "reverse-holofoil" && !p.variant.startsWith("1st-edition")
+    && !p.variant.startsWith("shadowless")).length;
+  const picker = sources.length > 1 ? h("label", {}, "Use price of ",
+    (() => {
+      const options = sources.map((p) => h("option", { value: p.market.toFixed(2) }, `${variantName(p.variant)} · ${money(p.market)}`));
+      if (regularCount > 1)                           // an average is not any one print's price: offer it by name
+        options.unshift(h("option", { value: rep.toFixed(2) }, `Average of regular prints · ${money(rep)}`));
+      const sel = h("select", { "aria-label": "Variant to use as sale price" }, options);
+      sel.value = rep.toFixed(2);
+      sel.addEventListener("change", () => calc.setSale(sel.value));
+      return sel;
+    })()) : null;
+
+  $("#cardDialogBody").replaceChildren(h("div", { class: "dlg" },
+    picture,
+    h("div", {},
+      h("div", { class: "dlg-head" },
+        h("div", {}, h("h2", {}, (card.watched ? "★ " : "") + card.name),
+          h("div", { class: "sub" }, `${card.set_name} · #${card.local_id}${card.official_count ? "/" + card.official_count : ""}` +
+            (card.rarity ? " · " + card.rarity : ""))),
+        close),
+      h("h3", {}, "TCGplayer prices"), priceTable, sourceNote,
+      h("h3", {}, "Price by condition"), conditionSection(card),
+      h("div", { class: "actions" }, watchBtn, listBtn, soldLink(card, "ghost"), tcgplayerLink(prices)),
+      h("h3", {}, "If you sold this card on eBay"),
+      picker ? h("div", { style: "margin-bottom:10px" }, picker) : null,
+      calc.el)));
+}
+
+// ---- sets tab ---------------------------------------------------------------------------------
+const SET_PAGE = 50;
+let setList = [], setTotal = 0, setListSeq = 0, setQTimer = null;
+let currentSet = null;       // { id, info, cards, total } while a set is open
+
+async function loadSets(append = false) {
+  const seq = ++setListSeq;
+  const offset = append ? setList.length : 0;
+  try {
+    const r = await api(`/api/sets?limit=${SET_PAGE}&offset=${offset}&sort=${$("#setSort").value}` +
+      "&q=" + encodeURIComponent($("#setQ").value.trim()));
+    if (seq !== setListSeq) return;
+    setList = append ? setList.concat(r.sets) : r.sets;
+    setTotal = r.total;
+    drawSets();
+  } catch (e) {
+    if (seq !== setListSeq) return;
+    $("#setsSummary").textContent = "Could not load sets: " + e.message;
+  }
+}
+
+function setLogo(s, cls = "setlogo") {
+  const badge = () => h("div", { class: "setbadge", title: s.name }, (s.id || "").toUpperCase().slice(0, 7));
+  if (!s.logo) return badge();
+  const img = h("img", { class: cls, src: s.logo, alt: s.name + " logo", loading: "lazy" });
+  img.addEventListener("error", () => img.replaceWith(badge()));        // not every set has a logo (promos, kits)
+  return img;
+}
+
+function drawSets() {
+  $("#setsSummary").textContent = setTotal ? `· ${plural(setTotal, "set")}` : "";
+  const rows = setList.map((s) => {
+    const go = () => openSet(s.id);
+    const tr = h("tr", { class: "clickable", tabindex: "0", "aria-label": `Open ${s.name}` },
+      h("td", { class: "logo-cell" }, setLogo(s)),
+      h("td", {}, h("b", {}, s.name), h("div", { class: "note" }, s.serie_name || s.id)),
+      h("td", {}, s.release_date || "—"),
+      h("td", { class: "num" }, String(s.total_count ?? s.cards_in_db),
+        h("div", { class: "note" }, `${s.official_count ?? "?"} numbered`)),
+      h("td", { class: "num" }, s.set_value ? money(s.set_value) : "—",
+        h("div", { class: "note" }, `${s.priced_cards} priced`)));
+    tr.addEventListener("click", go);
+    tr.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+    return tr;
+  });
+  $("#setsTable").replaceChildren(
+    h("thead", {}, h("tr", {}, h("th", {}, ""), h("th", {}, "Set"), h("th", {}, "Released"), h("th", { class: "num" }, "Cards"),
+      h("th", { class: "num", title: "One copy of every card in the set, at each card's cheapest print" }, "Set value"))),
+    h("tbody", {}, rows.length ? rows : h("tr", {}, h("td", { colspan: 5, class: "empty" }, "No sets match."))));
+
+  const foot = $("#setsFoot");
+  foot.replaceChildren();
+  if (setTotal > setList.length) {
+    const more = h("button", { class: "ghost small", type: "button" }, `Show ${Math.min(SET_PAGE, setTotal - setList.length)} more`);
+    more.addEventListener("click", () => { more.disabled = true; loadSets(true); });
+    foot.append(h("span", { class: "sub" }, `Showing ${setList.length} of ${setTotal} sets`), more);
+  } else if (setList.length > SET_PAGE) {
+    foot.append(h("span", { class: "sub" }, `All ${setTotal} sets shown`));
+  }
+}
+
+async function openSet(id) {
+  currentSet = { id, info: null, cards: [], total: 0 };
+  $("#setsList").hidden = true;
+  $("#setDetail").hidden = false;
+  $("#setTitle").textContent = "Loading…";
+  $("#setLogo").hidden = true;
+  $("#setMeta").textContent = "";
+  $("#setCards").replaceChildren();
+  $("#setCardsFoot").replaceChildren();
+  try {
+    currentSet.info = (await api("/api/sets/" + encodeURIComponent(id))).set;
+    const lg = $("#setLogo");
+    lg.hidden = !currentSet.info.logo;
+    if (currentSet.info.logo) { lg.src = currentSet.info.logo; lg.onerror = () => { lg.hidden = true; }; }
+    await loadSetCards(false);
+  } catch (e) {
+    if (currentSet && currentSet.id === id) $("#setTitle").textContent = "Could not load set: " + e.message;
+  }
+}
+
+async function loadSetCards(append) {
+  const set = currentSet;
+  if (!set) return;
+  const offset = append ? set.cards.length : 0;
+  const r = await api(`/api/sets/${encodeURIComponent(set.id)}/cards?limit=${SET_PAGE}&offset=${offset}` +
+    `&sort=${$("#setCardSort").value}`);
+  if (currentSet !== set) return;          // the user went back or opened another set
+  set.cards = append ? set.cards.concat(r.cards) : r.cards;
+  set.total = r.total;
+  drawSetCards();
+}
+
+function drawSetCards() {
+  const set = currentSet;
+  if (!set || !set.info) return;
+  const i = set.info;
+  $("#setTitle").textContent = i.name;
+  $("#setMeta").textContent = [i.serie_name, i.release_date, `${set.total} cards`,
+    i.set_value ? `set value ${money(i.set_value)}` : null].filter(Boolean).join(" · ");
+  drawCards("set", set.cards, "No cards in this set.");
+
+  const foot = $("#setCardsFoot");
+  foot.replaceChildren();
+  if (set.total > set.cards.length) {
+    const more = h("button", { class: "ghost small", type: "button" }, `Show ${Math.min(SET_PAGE, set.total - set.cards.length)} more`);
+    more.addEventListener("click", async () => {
+      more.disabled = true;
+      try { await loadSetCards(true); } catch { more.disabled = false; }
+    });
+    foot.append(h("span", { class: "sub" }, `Showing ${set.cards.length} of ${set.total} cards`), more);
+  } else if (set.total > SET_PAGE) {
+    foot.append(h("span", { class: "sub" }, `All ${set.total} cards shown`));
+  }
+}
+
+const remembered = (key, allowed, fallback) => (allowed.includes(store.get(key, "")) ? store.get(key, fallback) : fallback);
+$("#setSort").value = remembered("setSort", ["newest", "oldest", "alpha", "size", "value"], "newest");
+$("#setCardSort").value = remembered("setCardSort", ["number", "price_desc", "price_asc", "alpha"], "number");
+$("#setSort").addEventListener("change", () => { store.set("setSort", $("#setSort").value); loadSets(false); });
+$("#setCardSort").addEventListener("change", () => {
+  store.set("setCardSort", $("#setCardSort").value);
+  loadSetCards(false).catch(() => {});
+});
+$("#setQ").addEventListener("input", () => { clearTimeout(setQTimer); setQTimer = setTimeout(() => loadSets(false), 250); });
+$("#setBack").addEventListener("click", () => {
+  currentSet = null;
+  $("#setDetail").hidden = true;
+  $("#setsList").hidden = false;
+});
+
+// ---- tools: standalone calculator -------------------------------------------------------------
+$("#toolCalc").append(calculator().el);
+
+// ---- boot -------------------------------------------------------------------------------------
+(async () => {
+  showView(location.hash.slice(1));
+  try { await loadStatus(); } catch (e) { $("#banner").hidden = false; $("#banner").textContent = "Cannot reach the API: " + e.message; }
+  try { await loadWatchlist(); } catch (e) { drawWatched(); }
+  loadScan();
+})();
+</script>
+</body>
+</html>
