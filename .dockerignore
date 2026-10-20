@@ -5,6 +5,7 @@ __pycache__
 .pytest_cache
 data/*.db*
 data/credentials.json
+data/secrets.json
 tests
 keyset.txt
 .env

@@ -24,7 +24,7 @@ from typing import Any, Callable
 
 import httpx
 
-from . import backup, updates
+from . import backup, notify, updates
 from . import listing_store as store
 from . import watchlist as wl
 from .condprices import TcgplayerConditions
@@ -424,6 +424,14 @@ class Feed:
                         built_at=datetime.now(timezone.utc).isoformat())
         with self._lock:
             self._snap = snap
+        try:
+            notify.announce(conn, rows, snap.first_seen, on_result=self._notified)
+        except Exception:                           # noqa: BLE001 - telling people must never stop the feed
+            log.exception("notification failed")
+
+    def _notified(self, result: dict) -> None:
+        problems = {ch: err for ch, err in result.items() if err}
+        self.status["notify_error"] = "; ".join(f"{ch}: {err}" for ch, err in problems.items()) or None
 
     def _verify(self, conn, rows: list[ScanRow], summary: dict, limit: int | None = None,
                 first: set[str] | None = None) -> bool:

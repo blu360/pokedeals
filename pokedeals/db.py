@@ -66,6 +66,12 @@ CREATE TABLE IF NOT EXISTS listings (
 );
 CREATE INDEX IF NOT EXISTS listings_state ON listings(state, first_seen);
 
+-- Listings we already sent a notification about (so a restart never repeats one).
+CREATE TABLE IF NOT EXISTS notified (
+    id TEXT PRIMARY KEY,
+    at TEXT NOT NULL
+);
+
 -- User preferences entered in the UI (e.g. the buyer ZIP). Also user data: sync never touches it.
 CREATE TABLE IF NOT EXISTS app_settings (
     key   TEXT PRIMARY KEY,

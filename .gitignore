@@ -13,3 +13,4 @@ data/credentials.json
 data/*.db-wal
 data/*.db-shm
 *.log
+data/secrets.json

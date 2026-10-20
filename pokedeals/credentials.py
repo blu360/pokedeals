@@ -107,3 +107,59 @@ def forget() -> None:
             except Exception:                  # noqa: BLE001
                 pass
     credentials_file().unlink(missing_ok=True)
+
+
+# ---- other secrets (SMTP password, webhook addresses, bot tokens, ntfy topic) --------------------------
+# Same idea as the eBay keys: POKEDEALS_<NAME> in the environment (or ..._FILE), else the keyring, else a private file.
+
+def secrets_file() -> Path:
+    return credentials_file().with_name("secrets.json")
+
+
+def _read_secrets_file() -> dict:
+    try:
+        return json.loads(secrets_file().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def secret(name: str) -> str:
+    if value := env_value("POKEDEALS_" + name.upper()):
+        return value
+    kr = _keyring()
+    if kr is not None:
+        try:
+            if value := kr.get_password(SERVICE, name):
+                return value
+        except Exception:                      # noqa: BLE001
+            pass
+    return str(_read_secrets_file().get(name, ""))
+
+
+def save_secret(name: str, value: str) -> None:
+    kr = _keyring()
+    if kr is not None:
+        try:
+            kr.set_password(SERVICE, name, value)
+            return
+        except Exception:                      # noqa: BLE001
+            pass
+    data = _read_secrets_file()
+    data[name] = value
+    path = secrets_file()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        json.dump(data, f)
+
+
+def forget_secret(name: str) -> None:
+    kr = _keyring()
+    if kr is not None:
+        try:
+            kr.delete_password(SERVICE, name)
+        except Exception:                      # noqa: BLE001
+            pass
+    data = _read_secrets_file()
+    if data.pop(name, None) is not None:
+        secrets_file().write_text(json.dumps(data), encoding="utf-8")

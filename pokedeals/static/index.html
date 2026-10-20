@@ -375,6 +375,12 @@
   .source { padding: 6px 0; } .source .dot { margin-right: 6px; }
   .source.ok .dot { color: var(--good); } .source.bad .dot { color: var(--warn); }
   .sub.api-warn { color: var(--warn); font-weight: 600; } .sub.api-full { color: var(--bad); font-weight: 600; }
+
+  /* notifications */
+  .channel { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-top: 10px; }
+  .channel summary { cursor: pointer; }
+  .channel .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; }
+  label.inline { display: inline-flex; gap: 6px; align-items: center; }
 </style>
 </head>
 <body>
@@ -595,6 +601,22 @@
       <div class="note">Saved on this computer only. It is sent to eBay, and nowhere else, when listings are fetched.</div>
     </section>
 
+    <section id="notifySection">
+      <div class="bar"><h2>Notifications</h2>
+        <span class="sub">Hear about new deals without watching the page. Passwords, webhook addresses and tokens are kept privately on this computer.</span></div>
+      <div class="grid">
+        <div><label for="nMin">Tell me about</label>
+          <select id="nMin"><option value="steal">Steals only</option><option value="deal">Steals and deals</option></select></div>
+        <label class="inline"><input type="checkbox" id="nUnc"> include uncertain ones</label>
+      </div>
+      <div class="channel" id="desktopChannel">
+        <b>Desktop</b> <span class="sub">a pop-up while pokedeals is open in a browser tab, even in the background</span>
+        <div class="row"><button id="desktopToggle" class="ghost small" type="button">Turn on</button>
+          <span class="sub" id="desktopState"></span></div>
+      </div>
+      <div id="channels"></div>
+    </section>
+
     <section>
       <div class="bar"><h2>Try a listing</h2>
         <span class="sub">Paste an eBay listing's title and price to see which card it is and whether it would be a deal.</span></div>
@@ -673,6 +695,7 @@ function showView(name) {
   }
   if (name === "search") $("#cardQ").focus();
   if (name === "status") loadHealth();
+  if (name === "tools") loadNotify();
   if (name === "sets" && !setsLoaded) { setsLoaded = true; loadSets(); }   // fetched on first visit only
 }
 let setsLoaded = false;
@@ -1145,6 +1168,7 @@ function announceArrivals(result, key) {
   for (const r of deals.slice(0, 12)) r._arrive = true;  // animate at most a dozen at once
   setTimeout(() => { for (const r of deals) delete r._arrive; }, 4000);
   for (const r of deals.slice(0, 3)) toast(r);
+  if (desktopOn() && document.hidden) for (const r of deals.slice(0, 3)) desktopAlert(r);
   if (deals.length > 3) {
     const more = h("button", { class: "toast", type: "button" }, h("div", {}, h("div", { class: "tt" }, `…and ${deals.length - 3} more new deals`)));
     more.addEventListener("click", () => more.remove());
@@ -1248,7 +1272,7 @@ async function checkNow() {
 
 // The deals list updates itself: the feed finds new listings in the background and this picks them up.
 setInterval(() => {
-  if (!document.hidden && location.hash.replace("#", "") in { "": 1, deals: 1 } && lastScan && lastScan.feed && !feedWaiting)
+  if ((!document.hidden || desktopOn()) && location.hash.replace("#", "") in { "": 1, deals: 1 } && lastScan && lastScan.feed && !feedWaiting)
     loadScan({ quiet: true });
 }, 20000);
 
@@ -1957,6 +1981,106 @@ $("#setBack").addEventListener("click", () => {
 });
 
 // ---- boot -------------------------------------------------------------------------------------
+// ---- notifications: desktop pop-ups from the page, the rest sent by the server ----------------------------------
+const desktopOn = () => store.get("desktopNotify", "0") === "1" && "Notification" in window && Notification.permission === "granted";
+
+function drawDesktop() {
+  const supported = "Notification" in window;
+  const state = $("#desktopState"), btn = $("#desktopToggle");
+  btn.hidden = !supported;
+  if (!supported) { state.textContent = "This browser cannot show notifications."; return; }
+  if (Notification.permission === "denied") { btn.hidden = true; state.textContent = "Blocked in your browser's site settings: allow notifications for this page to use this."; return; }
+  btn.textContent = desktopOn() ? "Turn off" : "Turn on";
+  state.textContent = desktopOn() ? "On" : "Off";
+}
+$("#desktopToggle").addEventListener("click", async () => {
+  if (desktopOn()) store.set("desktopNotify", "0");
+  else if ((await Notification.requestPermission()) === "granted") store.set("desktopNotify", "1");
+  drawDesktop();
+});
+
+function desktopAlert(r) {
+  const v = r.valuation, cat = CATEGORY[r.category];
+  try {
+    const n = new Notification(`New ${cat.label.toLowerCase()}: ${r.card ? r.card.name : r.title}`, {
+      body: `${money(v.total_cost)} · worth ${money(v.fair_value)} · ${Math.round(v.discount * 100)}% cheaper`,
+      icon: r.image || undefined, tag: r.id });
+    n.onclick = () => { window.focus(); openListing(r); n.close(); };
+  } catch (e) { /* some browsers refuse outside a user gesture; the toast still shows */ }
+}
+
+const NOTIFY_SPECS = {
+  email: { title: "Email", hint: "Any SMTP service works (Gmail needs an app password).",
+    fields: [["host", "Mail server", "text"], ["port", "Port", "number"], ["security", "Security", ["starttls", "ssl", "none"]],
+             ["username", "Username (blank if none)", "text"], ["sender", "From address", "text"], ["to", "Send to", "text"]],
+    secret: "Password" },
+  discord: { title: "Discord", hint: "Server settings, Integrations, Webhooks, New Webhook, Copy Webhook URL.", fields: [], secret: "Webhook address" },
+  telegram: { title: "Telegram", hint: "Make a bot with @BotFather for the token, message it once, then look up your chat ID (for example with @userinfobot).",
+    fields: [["chat_id", "Chat ID", "text"]], secret: "Bot token" },
+  ntfy: { title: "ntfy", hint: "Install the ntfy app and subscribe to your topic. Pick a long random one: anyone who knows it can read your alerts.",
+    fields: [["server", "Server", "text"]], secret: "Topic" },
+};
+
+function channelForm(ch, cfg, view) {
+  const spec = NOTIFY_SPECS[ch], el = {};
+  const field = (key, label, kind) => {
+    const input = Array.isArray(kind)
+      ? h("select", {}, kind.map((o) => h("option", { value: o }, o)))
+      : h("input", { type: kind, autocomplete: "off" });
+    input.value = cfg[ch][key] ?? "";
+    el[key] = input;
+    return h("div", {}, h("label", {}, label), input);
+  };
+  const enabled = h("input", { type: "checkbox" });
+  enabled.checked = cfg[ch].enabled;
+  const secret = h("input", { type: "password", autocomplete: "new-password",
+    placeholder: view.has_secret[ch] ? "saved (type to replace)" : "" });
+  const status = h("span", { class: "sub" });
+  const body = () => ({ config: { [ch]: { ...Object.fromEntries(spec.fields.map(([k]) => [k, el[k].value])), enabled: enabled.checked } },
+                       secrets: { [ch]: secret.value } });
+  async function save() {
+    status.textContent = "Saving…";
+    try {
+      const v = await api("/api/notifications", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body()) });
+      secret.value = "";
+      status.textContent = v.configured[ch] ? "Saved." : "Saved, but it still needs: " + (spec.secret.toLowerCase() + (spec.fields.length ? " and the fields above" : ""));
+      secret.placeholder = v.has_secret[ch] ? "saved (type to replace)" : "";
+    } catch (e) { status.textContent = "Not saved: " + e.message; }
+  }
+  const test = h("button", { class: "ghost small", type: "button" }, "Send a test");
+  test.addEventListener("click", async () => {
+    await save();
+    status.textContent = "Sending…";
+    try {
+      const r = await api("/api/notifications/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ channel: ch }) });
+      status.textContent = r.ok ? "Sent. Check your " + spec.title + "." : "Failed: " + r.error;
+    } catch (e) { status.textContent = "Not sent: " + e.message; }
+  });
+  const saveBtn = h("button", { class: "small", type: "button" }, "Save");
+  saveBtn.addEventListener("click", save);
+  return h("details", { class: "channel", open: cfg[ch].enabled || null },
+    h("summary", {}, h("b", {}, spec.title), " ", h("span", { class: "sub" }, view.configured[ch] && cfg[ch].enabled ? "on" : "off")),
+    h("div", { class: "sub" }, spec.hint),
+    h("div", { class: "grid" }, ...spec.fields.map(([k, l, t]) => field(k, l, t)),
+      h("div", {}, h("label", {}, spec.secret), secret)),
+    h("div", { class: "row" }, h("label", { class: "inline" }, enabled, " send " + spec.title + " notifications"), saveBtn, test, status));
+}
+
+async function loadNotify() {
+  let view;
+  try { view = await api("/api/notifications"); } catch (e) { return; }
+  $("#nMin").value = view.min;
+  $("#nUnc").checked = view.include_uncertain;
+  $("#channels").replaceChildren(...Object.keys(NOTIFY_SPECS).map((ch) => channelForm(ch, view, view)));
+  drawDesktop();
+}
+async function saveNotifyBasics() {
+  await api("/api/notifications", { method: "PUT", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ config: { min: $("#nMin").value, include_uncertain: $("#nUnc").checked } }) });
+}
+$("#nMin").addEventListener("change", saveNotifyBasics);
+$("#nUnc").addEventListener("change", saveNotifyBasics);
+
 // ---- status page: eBay usage against the daily limit, data sources, backups, updates -------------
 const TASK_GROUPS = {
   looking: { label: "Looking for new listings", color: "var(--accent)", tasks: ["fast_search", "full_search"] },

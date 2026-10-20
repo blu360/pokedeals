@@ -22,6 +22,7 @@ from .db import connect, set_setting
 from .matcher import Matcher, choose_price
 from .models import Listing
 from . import backup as backups
+from . import notify
 from . import health
 from .feed import Feed, record_calls
 from .firstrun import FirstRun
@@ -35,6 +36,16 @@ class EvaluateRequest(BaseModel):
     title: str = Field(min_length=1, max_length=300)
     price: float = Field(ge=0, le=1_000_000)
     shipping: float | None = Field(default=0.0, ge=0, le=10_000)
+
+
+class NotifyRequest(BaseModel):
+    config: dict = Field(default_factory=dict)
+    secrets: dict[str, str] = Field(default_factory=dict)
+    clear: list[str] = Field(default_factory=list)
+
+
+class NotifyTest(BaseModel):
+    channel: Literal["email", "discord", "telegram", "ntfy"]
 
 
 class ZipRequest(BaseModel):
@@ -176,6 +187,41 @@ def create_app(settings: Settings = SETTINGS, fixture: Path | None = None,
         """Back up the watchlist and settings right now."""
         path = backups.make_backup(settings.db_path, settings.backup_keep)
         return {"made": path.name, "backups": backups.list_backups(settings.db_path)[:5]}
+
+    @app.get("/api/notifications")
+    def notifications_get() -> dict:
+        conn = connect(settings.db_path)
+        try:
+            return notify.public_view(conn)
+        finally:
+            conn.close()
+
+    @app.put("/api/notifications")
+    def notifications_put(req: NotifyRequest) -> dict:
+        """Change which channels are on and how good a deal must be. `secrets` (webhook addresses, tokens, the SMTP
+        password) are stored privately and never returned; a blank one keeps what is stored."""
+        conn = connect(settings.db_path)
+        try:
+            try:
+                notify.save_config(conn, req.config, req.secrets, req.clear)
+            except ValueError as e:
+                raise HTTPException(422, str(e)) from None
+            return notify.public_view(conn)
+        finally:
+            conn.close()
+
+    @app.post("/api/notifications/test")
+    def notifications_test(req: NotifyTest) -> dict:
+        """Send a test message through one channel and say whether it arrived."""
+        conn = connect(settings.db_path)
+        try:
+            cfg = notify.load_config(conn)
+        finally:
+            conn.close()
+        if not notify.configured(req.channel, cfg):
+            raise HTTPException(409, "That channel is not set up yet: fill in its fields and save first.")
+        err = notify.send(cfg, "pokedeals test", "If you can read this, notifications work.", None, [req.channel])[req.channel]
+        return {"ok": err is None, "error": err}
 
     @app.get("/api/setup")
     def setup_progress() -> dict:
