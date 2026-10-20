@@ -19,7 +19,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Callable
 
 import httpx
 
@@ -44,13 +44,12 @@ def parse_stamp(text: str | None) -> datetime | None:
     return t if t.tzinfo else t.replace(tzinfo=timezone.utc)
 
 
-def latest_feed_stamp() -> str | None:
+def latest_feed_stamp() -> datetime | None:
     """When the TCGplayer price feed (tcgcsv.com) last published, or None if it cannot be reached."""
     try:
         r = httpx.get(f"{BASE_URL}/last-updated.txt", timeout=20, headers={"User-Agent": USER_AGENT})
         r.raise_for_status()
-        stamp = r.text.strip()
-        return stamp if parse_stamp(stamp) else None          # a "blocked" message is a 200 too: not a date, not news
+        return parse_stamp(r.text)                            # a "blocked" message is a 200 too: not a date, not news
     except httpx.HTTPError:
         return None
 
@@ -182,13 +181,18 @@ class Feed:
         conn = connect(self.s.db_path)
         try:
             self.status["prices_checked_at"] = datetime.now(timezone.utc).isoformat()
-            # the stamps come in more than one format, so compare them as times rather than as text
-            stored = max(filter(None, (parse_stamp(r[0]) for r in conn.execute("SELECT DISTINCT prices_updated FROM cards"))),
-                         default=None)
-            latest = parse_stamp(latest_feed_stamp())
+            # compare against the feed stamp we last loaded; the cards' own stamps come in several formats
+            stored = parse_stamp(get_setting(conn, "prices_feed_stamp"))
+            if stored is None:                      # first run: work it out from the cards once, then remember it
+                stored = max(filter(None, (parse_stamp(r[0]) for r in conn.execute(
+                    "SELECT DISTINCT prices_updated FROM cards"))), default=None)
+                if stored is not None:
+                    set_setting(conn, "prices_feed_stamp", stored.isoformat())
+            latest = latest_feed_stamp()
             if latest is None or (stored is not None and latest <= stored):
                 return False
             run_price_refresh(conn)
+            set_setting(conn, "prices_feed_stamp", latest.isoformat())
             self._publish(conn, self._evaluate(conn, fetch=False))        # values change with the prices
             return True
         except Exception as e:                      # noqa: BLE001 - old prices beat a dead feed thread
@@ -205,6 +209,16 @@ class Feed:
         if self.s.feed_browse_hours <= 0:
             return ""
         return (datetime.now(timezone.utc) - timedelta(hours=self.s.feed_browse_hours)).isoformat()
+
+    def split_browsable(self, rows: list[ScanRow], first_seen: Callable[[str], str | None]) -> tuple[list[ScanRow], list[ScanRow]]:
+        """(fresh, older): older rows were first seen before the browse cutoff. A row with no known first-seen time
+        counts as fresh. The one place that decides what can be seen, for the list and for the item checks alike."""
+        cutoff = self.browse_cutoff()
+        fresh, older = [], []
+        for r in rows:
+            t = first_seen(r.listing.id)
+            (fresh if not cutoff or not t or t >= cutoff else older).append(r)
+        return fresh, older
 
     def snapshot(self) -> Snapshot:
         with self._lock:
@@ -282,7 +296,7 @@ class Feed:
                     rows = self._evaluate(conn, fetch=False)
 
             deal_ids = {r.listing.id for r in rows if r.verdict.is_deal}
-            pruned = store.purge(conn, deal_ids=deal_ids, nondeal_hours=self.s.feed_nondeal_hours,
+            pruned = store.purge(conn, deal_ids=deal_ids, nondeal_hours=self.s.feed_browse_hours or self.s.feed_nondeal_hours,
                                  max_age_days=self.s.feed_max_age_days, max_deals=self.s.feed_max_deals)
             if any(pruned[k] for k in ("ended", "dropped")):
                 rows = self._evaluate(conn, fetch=False)
@@ -391,8 +405,7 @@ class Feed:
         instead (`feed_max_age_days`).
         """
         limit = self.s.feed_verify_per_cycle if limit is None else limit
-        cutoff = self.browse_cutoff()
-        rows = [r for r in rows if self._pending.get(r.listing.id, ("9", None))[0] >= cutoff]    # only what can be seen
+        rows, _ = self.split_browsable(rows, lambda i: self._pending.get(i, (None, None))[0])      # only what can be seen
         def checked(r: ScanRow) -> str | None:
             return self._pending.get(r.listing.id, (None, None))[1]
 

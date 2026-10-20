@@ -216,7 +216,7 @@ class Settings:
     feed_daily_call_budget: int = 4000               # stay under eBay's 5,000/day, leaving room for manual use
     feed_verify_per_cycle: int = 60                  # eBay getItem checks per cycle (condition, still for sale?)
     feed_max_deals: int = 300                        # past this many deals the oldest are dropped
-    feed_nondeal_hours: int = 48                     # listings that are not deals are forgotten after this
+    feed_nondeal_hours: int = 48                     # listings that are not deals are forgotten after this (only when feed_browse_hours is 0: otherwise they go when they leave the browse window)
     feed_browse_hours: int = 24                      # the feed shows only listings first seen this recently; searching reaches back to feed_max_age_days
     feed_max_age_days: int = 3                       # nothing is kept longer than this: we do not re-check for sales, so old deals expire
 

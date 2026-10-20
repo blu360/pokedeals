@@ -130,7 +130,7 @@ and are never synced; `sync` also removes any that an older sync stored.
   fewer than 5 sales of that card in that condition in the last 3 months (`thin_market_sales`), or none. It has its own
   chip (on by default), says why in the row and popup, and points to eBay's sold listings, which are a better guide for
   thin cards. Deals are not re-checked for "has it sold?" (that was the costliest call for the least value); opening a
-  listing checks it live, and the feed shows only the last 24 hours, and deals expire after 3 days (typing in the filter box searches all 3 days).
+  listing checks it live, and the feed shows only the last 24 hours, and deals expire after 3 days (typing in the filter box also finds older deals, up to 3 days; other listings are forgotten after a day).
 
   Only Steal and Deal show by default; click the chips to show the others (each shows how many listings it holds).
   "Also show" adds Suspicious listings (likely fakes), **Held back** ones (cheap, but from a weak or brand-new seller,
@@ -202,7 +202,7 @@ The Deals tab is no longer a single search you wait for. While the app runs, a b
 3. stores every listing in the database, so deals **build up** instead of vanishing on the next refresh;
 4. checks the deals with eBay's item call: it returns the seller's stated condition and whether the listing is
    still for sale. Sold or removed listings are deleted from the feed (and never re-added);
-5. forgets what is no longer worth keeping: ended auctions, listings that are not deals after 48 hours, anything
+5. forgets what is no longer worth keeping: ended auctions, listings that are not deals once they are older than the feed's 24-hour window (`feed_browse_hours`), anything
    older than 30 days, and, once there are more than 300 deals, the **oldest** deals (newer ones push them out).
 
 The page re-reads the stored deals every 20 seconds, so new deals appear on their own; "Check eBay now" runs a

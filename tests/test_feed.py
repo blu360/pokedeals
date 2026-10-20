@@ -16,12 +16,14 @@ from pokedeals.models import Listing
 def early_utc(monkeypatch):
     """The daily pacing depends on the time of day: pin the feed's clock to 06:00 UTC today so tests do not."""
     from pokedeals import feed as feed_mod
-    pinned = datetime.now(timezone.utc).replace(hour=6, minute=0, second=0, microsecond=0)
+    start = datetime.now(timezone.utc)
+    pinned = start.replace(hour=6, minute=0, second=0, microsecond=0)
 
     class Early(datetime):
         @classmethod
-        def now(cls, tz=None):
-            return pinned
+        def now(cls, tz=None):                     # starts at 06:00 UTC today, then runs on at the normal pace
+            t = pinned + (datetime.now(timezone.utc) - start)
+            return t.astimezone(tz) if tz else t.astimezone().replace(tzinfo=None)     # naive = local time, as the real one
     monkeypatch.setattr(feed_mod, "datetime", Early)
 
 
@@ -321,7 +323,7 @@ def test_a_newer_price_day_is_pulled_in_and_listings_are_revalued(settings, monk
     f = make(settings, pages={"*": [listing(1)]})
     f.poll_once()
     ran = []
-    monkeypatch.setattr(feed_mod, "latest_feed_stamp", lambda: "2026-10-18T20:05:40+0000")
+    monkeypatch.setattr(feed_mod, "latest_feed_stamp", lambda: feed_mod.parse_stamp("2026-10-18T20:05:40+0000"))
 
     def refresh(c):
         ran.append(1)
@@ -341,7 +343,7 @@ def test_no_refresh_when_the_feed_has_nothing_newer_or_cannot_be_reached(setting
     conn.close()
     f = make(settings)
     monkeypatch.setattr(feed_mod, "run_price_refresh", lambda c: pytest.fail("should not refresh"))
-    monkeypatch.setattr(feed_mod, "latest_feed_stamp", lambda: "2026-10-18T20:05:40+0000")
+    monkeypatch.setattr(feed_mod, "latest_feed_stamp", lambda: feed_mod.parse_stamp("2026-10-18T20:05:40+0000"))
     assert not f.refresh_prices_if_stale()
     monkeypatch.setattr(feed_mod, "latest_feed_stamp", lambda: None)          # tcgcsv unreachable
     assert not f.refresh_prices_if_stale()
@@ -350,7 +352,7 @@ def test_no_refresh_when_the_feed_has_nothing_newer_or_cannot_be_reached(setting
 def test_a_failing_refresh_keeps_the_old_prices_and_reports_it(settings, monkeypatch):
     from pokedeals import feed as feed_mod
     f = make(settings)
-    monkeypatch.setattr(feed_mod, "latest_feed_stamp", lambda: "2099-01-01T00:00:00+0000")
+    monkeypatch.setattr(feed_mod, "latest_feed_stamp", lambda: feed_mod.parse_stamp("2099-01-01T00:00:00+0000"))
 
     def boom(c):
         raise RuntimeError("feed is down")
@@ -456,3 +458,22 @@ def test_the_stamp_comparison_understands_both_formats_and_rejects_non_dates():
     from pokedeals.feed import parse_stamp
     assert parse_stamp("2026-10-18T20:05:40+0000") < parse_stamp("2026-10-18T22:54:45.902Z")
     assert parse_stamp("Ahoy! Your User-Agent has been blocked.") is None and parse_stamp(None) is None
+
+
+def test_a_listing_with_no_known_first_seen_time_counts_as_fresh(settings):
+    feed = make(settings, pages={"*": [listing(1), listing(2)]})
+    feed.poll_once()
+    rows = feed.snapshot().rows
+    old = (datetime.now(timezone.utc) - timedelta(hours=settings.feed_browse_hours + 1)).isoformat()
+    fresh, older = feed.split_browsable(rows, {"L1": old, "L2": None}.get)
+    assert [r.listing.id for r in older] == ["L1"] and [r.listing.id for r in fresh] == ["L2"]
+    assert feed.split_browsable(rows, {}.get) == (rows, [])
+
+
+def test_the_feed_stamp_we_loaded_is_remembered_between_checks(settings, monkeypatch):
+    from pokedeals import feed as feed_mod
+    f = make(settings)
+    monkeypatch.setattr(feed_mod, "run_price_refresh", lambda c: None)
+    monkeypatch.setattr(feed_mod, "latest_feed_stamp", lambda: feed_mod.parse_stamp("2099-01-01T00:00:00+0000"))
+    assert f.refresh_prices_if_stale()
+    assert not f.refresh_prices_if_stale()                                     # same stamp: nothing newer

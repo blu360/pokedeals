@@ -467,12 +467,10 @@ def create_app(settings: Settings = SETTINGS, fixture: Path | None = None,
                     or (r.match.card is not None and needle in r.match.card.name.lower())]
         if not intl:                               # listings from abroad cost more to ship and are slower
             rows = [r for r in rows if (r.listing.item_country or "US").upper() == "US"]
-        older = 0
+        stale: list[ScanRow] = []
         if feed is not None and not needle and scope != "watchlist":
             # browsing shows only what is fresh: older listings have most likely sold, and stay findable by search
-            cutoff = feed.browse_cutoff()
-            fresh = [r for r in rows if first_seen.get(r.listing.id, "9") >= cutoff]
-            older, rows = len(rows) - len(fresh), fresh
+            rows, stale = feed.split_browsable(rows, first_seen.get)
 
         counts = {c: 0 for c in ("steal", "deal", "uncertain", "fair", "overpriced", "suspicious", "skipped", "blocked")}
         for r in rows:
@@ -495,6 +493,7 @@ def create_app(settings: Settings = SETTINGS, fixture: Path | None = None,
             return v.category in wanted
 
         shown = [r for r in rows if show(r)]
+        older = sum(show(r) for r in stale)        # only those a search would show under the chosen categories
 
         def profit(r: ScanRow) -> float:
             d = r.verdict.deal
@@ -515,7 +514,7 @@ def create_app(settings: Settings = SETTINGS, fixture: Path | None = None,
             d["first_seen"] = first_seen.get(r.listing.id)
             d["verified_at"] = verified_at.get(r.listing.id)
             return d
-        return {"mode": mode, "scope": scope, "sort": sort, "count": len(rows) + older, "older": older, "matching": total_shown,
+        return {"mode": mode, "scope": scope, "sort": sort, "count": len(rows) + len(stale), "older": older, "matching": total_shown,
                 "deals": counts["steal"] + counts["deal"], "counts": counts, "suspicious": counts["suspicious"],
                 "empty_watchlist": False, "feed": feed_info, "rows": [out(r) for r in shown]}
 

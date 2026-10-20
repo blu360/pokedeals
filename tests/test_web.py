@@ -465,6 +465,22 @@ def test_browsing_shows_only_the_last_day_but_a_search_reaches_back(db_path, mon
     assert sorted(r["id"] for r in client.get("/api/deals").json()["rows"]) == ["L1", "L2"]
 
 
+def test_the_older_count_covers_only_the_categories_a_search_would_show(db_path, monkeypatch):
+    from datetime import datetime, timedelta, timezone
+    from pokedeals.db import connect
+    client, feed = feed_client(db_path, monkeypatch, [mk(1, 250.0), mk(2, 250.0), mk(3, 450.0)])    # steal, steal, overpriced
+    feed.poll_once()
+    old = (datetime.now(timezone.utc) - timedelta(hours=30)).isoformat()
+    conn = connect(db_path)
+    conn.execute("UPDATE listings SET first_seen = ? WHERE id IN ('L2', 'L3')", (old,))
+    conn.commit()
+    conn.close()
+    feed.rebuild(fetch=False)
+    data = client.get("/api/deals").json()
+    assert data["count"] == 3 and data["older"] == 1                           # L3 is hidden too, but not in the chosen chips
+    assert client.get("/api/deals", params={"cats": "steal,overpriced"}).json()["older"] == 2
+
+
 def test_categories_filter_what_is_returned_and_counts_cover_all_of_them(db_path, monkeypatch):
     # market $400: 250 = 37% off (steal), 330 = 17% (deal), 395 = fair, 450 = 12% over (overpriced)
     client, feed = feed_client(db_path, monkeypatch, [mk(1, 250.0), mk(2, 330.0), mk(3, 395.0), mk(4, 450.0)])
