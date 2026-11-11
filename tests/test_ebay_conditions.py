@@ -114,7 +114,7 @@ def test_labels_cover_listings_beyond_the_first_page_of_each_condition():
     assert nm_pages[0] == (0, 200) and len(nm_pages) >= 2
 
 
-# ---- the scorer uses it ------------------------------------------------------------------------
+# ---- the scorer uses it ----
 
 def listing_with(card_condition=None, title="Charizard 4/102 Base Set Holo", price=300.0):
     from pokedeals.models import Listing
@@ -160,7 +160,7 @@ def test_when_seller_field_and_title_disagree_the_worse_wins(matcher, stated, ti
     assert v.deal.condition == expected
 
 
-# ---- language: TCGplayer prices are for English cards ------------------------------------------------
+# ---- language: TCGplayer prices are for English cards ----
 
 def test_searches_are_limited_to_english_listings_by_default():
     fake = FakeEbay([None, None])

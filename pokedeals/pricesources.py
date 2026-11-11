@@ -1,15 +1,14 @@
-"""Optional extra price sources, for data the free sources do not have (graded cards first).
+"""Optional extra price sources, for data the free sources lack (graded cards first).
 
-The core app needs no paid service: card prices come from TCGdex and the free tcgcsv.com feed, and per-condition
-prices from TCGplayer's own site. A *graded price source* adds what a PSA/BGS/CGC slab is worth, from a service you
-have your own key for (Pokémon Price Tracker, PriceCharting's API, ...). To add one:
+The app needs no paid service. A *graded price source* adds what a PSA/BGS/CGC slab is worth, from a service
+you have your own key for (Pokémon Price Tracker, PriceCharting's API, ...). To add one:
 
 1. write a class with `name`, `available()` and `graded_prices(card)` (see `GradedPriceSource`);
 2. call `register("my-source", MySource)` where the module is imported;
-3. list its name in `Settings.price_sources`, and put its key in the environment or keyring (credentials.secret).
+3. list its name in `Settings.price_sources` and put its key in the environment or keyring
+   (credentials.secret).
 
-A source that fails must raise `SourceError` or return nothing: the app then carries on without it and the Status
-page shows it as having trouble.
+A failing source must raise `SourceError` or return nothing: the app carries on without it.
 """
 from __future__ import annotations
 

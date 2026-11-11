@@ -685,7 +685,7 @@ const store = {
 
 let appMode = "sample";
 
-// ---- tabs -------------------------------------------------------------------------------------
+// ---- tabs ----
 const VIEWS = ["deals", "search", "sets", "watchlist", "status", "tools"];
 function showView(name) {
   if (!VIEWS.includes(name)) name = "deals";
@@ -703,15 +703,15 @@ for (const b of document.querySelectorAll("nav [data-view]"))
   b.addEventListener("click", () => { location.hash = b.dataset.view; });
 window.addEventListener("hashchange", () => showView(location.hash.slice(1)));
 
-// ---- listing rows (deals feed + "try a listing") -----------------------------------------------
+// ---- listing rows (deals feed + "try a listing") ----
 const COND_NAMES = { NM: "Near Mint", LP: "Lightly Played", MP: "Moderately Played", HP: "Heavily Played", DMG: "Damaged" };
 const condName = (c) => (COND_NAMES[c] ? `${COND_NAMES[c]} (${c})` : c);
 
-// When the seller does not say what condition a card is in we value it as Lightly Played, a placeholder.
-// Show that honestly: "Unknown" in lists, with the placeholder explained when you look closer.
+// No stated condition: we value the card as Lightly Played, a placeholder, and say so: "Unknown" in lists,
+// explained when you look closer.
 const condAssumed = (r) => !!(r.valuation && r.valuation.flags.some((f) => f.startsWith("condition-assumed")));
-// "Not checked yet" = we have not asked eBay for this listing's condition (the feed does so for deals first);
-// "Unknown" = we asked and the seller really did not say.
+// "Not checked yet" = we have not asked eBay for the condition yet (deals first); "Unknown" = we asked and
+// the seller did not say.
 const condPending = (r) => condAssumed(r) && r.first_seen != null && !r.verified_at;
 // The condition as a small coloured chip: NM / LP / MP / HP / DMG, or "?" when it is a placeholder.
 function condChip(r, long = false) {
@@ -792,8 +792,8 @@ function discountCell(v) {
 
 const costOf = (r) => (r.valuation ? r.valuation.total_cost : r.price + (r.shipping || 0));
 
-// Which rows a table shows: deals always; suspicious ones and everything else only when asked for.
-// minCost/maxCost filter on total cost (price + shipping). Returns how many rows the price filter hid.
+// Which rows a table shows: deals always; suspicious ones and the rest only when asked for. minCost/maxCost
+// filter on total cost (price + shipping). Returns how many rows the price filter hid.
 function passesFilters(r, f) {
   if (!f) return true;
   const o = r.buying_options || [];
@@ -881,7 +881,7 @@ function rowEl(r) {
     h("td", {}, v ? h("span", { title: `Match confidence ${v.confidence.toFixed(2)}` }, matchLabel(v.confidence)) : "—"));
 }
 
-// ---- listing popup: the eBay photo next to our card, plus everything we worked out ---------------
+// ---- listing popup: the eBay photo next to our card, plus everything we worked out ----
 const ldlg = $("#listingDialog");
 ldlg.addEventListener("click", (e) => { if (e.target === ldlg) ldlg.close(); });
 
@@ -889,8 +889,8 @@ ldlg.addEventListener("click", (e) => { if (e.target === ldlg) ldlg.close(); });
 const bigEbayImage = (u) => (u ? u.replace(/s-l\d+/, "s-l1600") : u);
 const ourCardImage = (c) => (c && c.image ? `${c.image}/high.webp` : null);
 
-// eBay's page of SOLD listings for a card. (eBay only gives sold data to approved partners through its API,
-// so this opens the same search you would run by hand.)
+// eBay's page of SOLD listings for a card. (eBay's API only gives sold data to approved partners, so this
+// opens the same search you would run by hand.)
 function soldUrl(c) {
   const q = `${c.name} ${c.local_id ?? c.number}${c.official_count ? "/" + c.official_count : ""}`;
   return "https://www.ebay.com/sch/i.html?_nkw=" + encodeURIComponent(q) + "&_sacat=183454&LH_Sold=1&LH_Complete=1&_sop=13";
@@ -933,8 +933,8 @@ const tile = (tone, icon, k, v, sub, big = false) => h("div", { class: "tile" + 
   h("div", { class: "ico", "aria-hidden": "true" }, icon),
   h("div", {}, h("div", { class: "k" }, k), h("div", { class: "v" }, v), sub ? h("div", { class: "s" }, sub) : null));
 
-// Everything that decides "do I click through?" on one line: the price with its condition beside it, then the
-// compact facts: shipping, where it ships from, still for sale?, and how sure we are of the match.
+// What decides "do I click through?" on one line: price with its condition, then shipping, where it ships
+// from, still for sale?, and how sure the match is.
 function essentials(r) {
   const v = r.valuation, flags = v ? v.flags : [];
   const cat = CATEGORY[r.category];
@@ -1079,7 +1079,7 @@ function cardLink(cardId, text, ctx) {
   return b;
 }
 
-// ---- deals tab --------------------------------------------------------------------------------
+// ---- deals tab ----
 let lastScan = null;
 let scanSeq = 0;
 
@@ -1142,7 +1142,7 @@ function drawFeedLine(feed) {
   el.replaceChildren(...parts.flatMap((p, i) => (i ? [" · ", p] : [p])));
 }
 
-// ---- a new deal turning up: the row slides in and glows, and a toast says what it is ------------------------------
+// ---- a new deal turning up: the row slides in and glows, and a toast says what it is ----
 const seenIds = new Set();      // listings this page has already shown
 let seenReady = false;          // the first load is the baseline: nothing on it is "new"
 
@@ -1216,7 +1216,7 @@ async function loadScan({ quiet = false } = {}) {
   } finally { if (seq === scanSeq) btn.disabled = false; }
 }
 
-// ---- the carousel of the best deals right now ---------------------------------------------------------------
+// ---- the carousel of the best deals right now ----
 let carouselKey = "";
 function carouselCard(r) {
   const v = r.valuation, cat = CATEGORY[r.category];
@@ -1359,7 +1359,7 @@ $("#dealSort").value = ["savings", "newest"].includes(store.get("dealSort", ""))
 $("#dealSort").addEventListener("change", () => { store.set("dealSort", $("#dealSort").value); loadScan(); });
 drawChips(null);
 
-// ---- cards: search results + watchlist, each expandable into a listings comparison -------------
+// ---- cards: search results + watchlist, each expandable into a listings comparison ----
 let watchlist = [];          // cards on the watchlist
 let searchResults = null;    // null = no active search; otherwise every page loaded so far
 let searchTotal = 0;         // how many cards match in total (may exceed searchResults.length)
@@ -1372,8 +1372,8 @@ const TABLES = { search: "#resultsTable", watch: "#watched", set: "#setCards" };
 
 const NA = () => h("span", { class: "sub", title: "This print does not exist for the card, or has no price" }, "N/A");
 
-// One price per card, never a range: the average of its regular prints (a single print for almost every
-// card). Reverse holo and 1st Edition (stamped) prices sit beside it rather than being averaged in.
+// One price per card, never a range: the average of its regular prints (one print for almost every card).
+// Reverse holo and 1st Edition prices sit beside it.
 function marketCell(c) {
   if (c.market_price == null) return NA();
   const tip = c.regular_count > 1
@@ -1541,7 +1541,7 @@ $("#cardQ").addEventListener("keydown", (e) => {
   if (e.key === "Escape") { $("#cardQ").value = ""; ++searchSeq; searchResults = null; drawResults(); }
 });
 
-// ---- listings comparison panel ---------------------------------------------------------------
+// ---- listings comparison panel ----
 async function toggleCompare(ctx, card) {
   const key = ctx + ":" + card.id;
   if (expanded.has(key)) { expanded.delete(key); redrawCards(); return; }
@@ -1549,8 +1549,8 @@ async function toggleCompare(ctx, card) {
   if (compare.has(card.id)) redrawCards(); else await fetchCompare(card.id);
 }
 
-// maxResults: how many eBay listings to pull (server default when null). Kept across refreshes so
-// "Refresh" re-fetches at the depth the user last asked for.
+// maxResults: how many eBay listings to pull (server default when null); kept across refreshes so "Refresh"
+// re-fetches at the same depth.
 async function fetchCompare(id, maxResults = compare.get(id)?.maxResults ?? null) {
   const keep = compare.get(id)?.showExcluded ?? false;
   const keepSus = compare.get(id)?.showSuspicious ?? false;
@@ -1674,7 +1674,7 @@ function comparePanel(card, st) {
   return box;
 }
 
-// ---- tools tab --------------------------------------------------------------------------------
+// ---- tools tab ----
 function showZip(zip) {
   const input = $("#zipInput");
   if (document.activeElement !== input) input.value = zip;
@@ -1720,7 +1720,7 @@ $("#tryForm").addEventListener("submit", async (e) => {
   } finally { btn.disabled = false; }
 });
 
-// ---- card detail dialog: large image and every variant's price ---------------------------------
+// ---- card detail dialog: large image and every variant's price ----
 const dlg = $("#cardDialog");
 dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });   // click on the backdrop
 
@@ -1849,7 +1849,7 @@ function renderCardDialog(data, ctx) {
       )));
 }
 
-// ---- sets tab ---------------------------------------------------------------------------------
+// ---- sets tab ----
 const SET_PAGE = 50;
 let setList = [], setTotal = 0, setListSeq = 0, setQTimer = null;
 let currentSet = null;       // { id, info, cards, total } while a set is open
@@ -1980,8 +1980,7 @@ $("#setBack").addEventListener("click", () => {
   $("#setsList").hidden = false;
 });
 
-// ---- boot -------------------------------------------------------------------------------------
-// ---- notifications: desktop pop-ups from the page, the rest sent by the server ----------------------------------
+// ---- notifications: desktop pop-ups from the page, the rest sent by the server ----
 const desktopOn = () => store.get("desktopNotify", "0") === "1" && "Notification" in window && Notification.permission === "granted";
 
 function drawDesktop() {
@@ -2081,7 +2080,7 @@ async function saveNotifyBasics() {
 $("#nMin").addEventListener("change", saveNotifyBasics);
 $("#nUnc").addEventListener("change", saveNotifyBasics);
 
-// ---- status page: eBay usage against the daily limit, data sources, backups, updates -------------
+// ---- status page: eBay usage against the daily limit, data sources, backups, updates ----
 const TASK_GROUPS = {
   looking: { label: "Looking for new listings", color: "var(--accent)", tasks: ["fast_search", "full_search"] },
   checking: { label: "Checking deals with eBay", color: "var(--good)", tasks: ["verify_new", "verify_routine", "verify_candidate", "verify_recheck"] },
@@ -2177,6 +2176,7 @@ async function waitForSetup() {
   box.remove();
 }
 
+// ---- boot ----
 (async () => {
   await waitForSetup();
   loadHealth();

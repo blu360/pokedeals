@@ -40,7 +40,7 @@ _SET_ORDER = {
 
 
 def with_logo(d: dict) -> dict:
-    """Add the set's logo URL (TCGdex hosts one for most sets; the page falls back to a badge when it 404s)."""
+    """Add the set's logo URL (TCGdex hosts most; the page falls back to a badge on a 404)."""
     d["logo"] = f"https://assets.tcgdex.net/en/{d['serie_id']}/{d['id']}/logo.webp" if d.get("serie_id") and d.get("id") else None
     return d
 
@@ -55,7 +55,7 @@ def list_sets(
     conn: sqlite3.Connection, q: str = "", sort: str = "newest", limit: int = 50, offset: int = 0
 ) -> SetPage:
     """Sets, optionally filtered by words in the set or series name. `value` is the sum of each card's
-    displayed market price, i.e. what one copy of every card in the set costs."""
+    displayed market price (what one copy of every card costs)."""
     if sort not in SET_SORTS:
         raise ValueError(f"unknown sort {sort!r}; expected one of {SET_SORTS}")
     where, params = [], []
@@ -89,8 +89,8 @@ def _number_key(local_id: str) -> tuple[str, int, str]:
 def set_cards(
     conn: sqlite3.Connection, set_id: str, sort: str = "number", limit: int = 50, offset: int = 0
 ) -> CardPage:
-    """One page of a set's cards. Sets hold at most a few hundred cards, so they are sorted in Python
-    (natural card-number order is awkward in SQL) and then sliced."""
+    """One page of a set's cards. Sets are small, so they are sorted in Python (natural card-number order
+    is awkward in SQL) and then sliced."""
     if sort not in CARD_SORTS:
         raise ValueError(f"unknown sort {sort!r}; expected one of {CARD_SORTS}")
     cards = [card_to_dict(r) for r in conn.execute(

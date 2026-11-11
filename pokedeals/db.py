@@ -31,8 +31,8 @@ CREATE INDEX IF NOT EXISTS idx_cards_local ON cards(local_key);
 CREATE INDEX IF NOT EXISTS idx_cards_set   ON cards(set_id);
 
 -- TCGplayer prices, one row per printing variant (normal / holofoil / reverse-holofoil / ...).
--- `source` says where a row came from: 'tcgdex' (its TCGplayer snapshot) or 'tcgcsv' (a daily mirror of
--- TCGplayer's own price feed, which overrides tcgdex per variant where a card could be matched).
+-- `source` is 'tcgdex' (its TCGplayer snapshot) or 'tcgcsv' (a daily mirror of TCGplayer's feed, which
+-- overrides tcgdex per variant when a card matches).
 CREATE TABLE IF NOT EXISTS card_prices (
     card_id    TEXT NOT NULL REFERENCES cards(id),
     variant    TEXT NOT NULL,
@@ -48,8 +48,7 @@ CREATE TABLE IF NOT EXISTS card_prices (
     PRIMARY KEY (card_id, variant)
 );
 
--- User data (not a cache): cards the user wants deals for. Sync never touches this table,
--- but deleting the DB file to "start fresh" would lose it.
+-- User data (not a cache): cards the user wants deals for. Deleting the DB file loses it.
 CREATE TABLE IF NOT EXISTS watchlist (
     card_id  TEXT PRIMARY KEY REFERENCES cards(id),
     added_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -95,8 +94,8 @@ def set_setting(conn: sqlite3.Connection, key: str, value: str | None) -> None:
     conn.commit()
 
 
-# Series that exist only in a video game ("Pokémon TCG Pocket"): no physical card, so nothing to sell on
-# eBay and no market price. They are never synced, and purged if an older sync stored them.
+# Series that exist only in a video game (Pokémon TCG Pocket): no physical card, so nothing to sell.
+# They are never synced, and purged if an older sync stored them.
 DIGITAL_SERIES = ("tcgp",)
 
 

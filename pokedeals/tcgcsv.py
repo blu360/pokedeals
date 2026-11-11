@@ -1,16 +1,15 @@
 """TCGplayer market prices from tcgcsv.com, applied over the TCGdex prices.
 
-TCGdex's TCGplayer snapshot has gaps (e.g. every card in a brand-new set like 30th Celebration is null)
-and can lag. tcgcsv.com republishes TCGplayer's own product + price feed as plain JSON once a day, for
-every Pokémon set ("group"). This module:
+TCGdex's TCGplayer snapshot has gaps (e.g. every card in a brand-new set is null) and can lag. tcgcsv.com
+republishes TCGplayer's own product and price feed as JSON once a day for every Pokémon set ("group").
+This module:
 
-  1. downloads that feed (about 440 small requests),
-  2. works out which feed group corresponds to each of our sets (by voting on matching cards),
-  3. matches our cards to feed products inside that group,
-  4. and stores the feed's prices per variant, OVERRIDING TCGdex's where a card matched.
+  1. downloads the feed (about 440 small requests),
+  2. works out which feed group matches each of our sets (by voting on matching cards),
+  3. matches our cards to products inside that group,
+  4. stores the feed's prices per variant, OVERRIDING TCGdex's where a card matched.
 
-Cards that cannot be matched keep whatever TCGdex gave them. The feed refreshes daily, so prices can
-be up to ~a day old; that is fine for a market price.
+Unmatched cards keep TCGdex's price. The feed refreshes daily, so prices can be about a day old.
 """
 from __future__ import annotations
 
@@ -44,7 +43,7 @@ SUBTYPE_VARIANT = {
 }
 
 
-# ---- feed model --------------------------------------------------------------------------------
+# ---- feed model ----
 
 @dataclass(frozen=True)
 class FeedPrice:
@@ -126,15 +125,15 @@ def parse_group(group: dict, products: list[dict], prices: list[dict]) -> Group:
         number = parse_number(ext.get("Number"))
         if number is None or _NOT_A_CARD.search(pr["name"]):
             continue                      # sealed product or code card
-        # Unpriced cards are kept (prices == []): they still "claim" their number in this group, so a
-        # lookalike group (Base Set vs Base Set (Shadowless)) cannot fill the gap with a different print.
+        # Unpriced cards are kept (prices == []): they still claim their number in the group, so a lookalike
+        # group (Base Set vs Base Set (Shadowless)) cannot fill the gap with a different print.
         loose, qualified = loose_name(pr["name"])
         out.append(Product(pr["productId"], group["groupId"], pr["name"], loose, qualified,
                            number[0], number[1], by_product.get(pr["productId"], [])))
     return Group(group["groupId"], group["name"], out)
 
 
-# ---- download ----------------------------------------------------------------------------------
+# ---- download ----
 
 async def fetch_feed(
     client: httpx.AsyncClient | None = None, *, concurrency: int = 6, progress: Progress | None = None
@@ -184,7 +183,7 @@ async def fetch_feed(
     return Feed(parsed, updated)
 
 
-# ---- matching ----------------------------------------------------------------------------------
+# ---- matching ----
 
 @dataclass(frozen=True)
 class CardRow:
@@ -202,9 +201,9 @@ class CardMatch:
     product: Product
     group_id: int
     method: str                 # "number+name" | "number" | "name"
-    # Only for Base Set: TCGplayer lists the 1st Editions (which are all Shadowless) and the Shadowless print
-    # in a separate "Base Set (Shadowless)" group. Its rows become this card's 1st-edition-* and
-    # shadowless-* variants; they are never mixed into the ordinary Base Set (unlimited) print.
+    # Base Set only: TCGplayer lists the 1st Editions (all Shadowless) and the Shadowless print in a separate
+    # "Base Set (Shadowless)" group. Its rows become this card's 1st-edition-* and shadowless-* variants,
+    # never mixed into the ordinary print.
     stamped: Product | None = None
 
 
@@ -230,8 +229,8 @@ _QUALIFIER_TEXT = re.compile(r"[\(\[]([^)\]]*)[\)\]]")
 
 
 def _qualifier_rank(name: str) -> tuple[bool, int]:
-    """(is it a Staff stamp, how many '(...)'/'[...]' qualifiers). A Staff-stamped print is never the
-    ordinary card, and among the rest fewer qualifiers is more likely the plain print:
+    """(is it a Staff stamp, how many '(...)'/'[...]' qualifiers). A Staff print is never the ordinary card;
+    among the rest, fewer qualifiers is more likely the plain print:
     'Manectric - SM130 (Prerelease)' beats '... (Prerelease) [Staff]'."""
     quals = _QUALIFIER_TEXT.findall(name)
     return any("staff" in q.lower() for q in quals), len(quals)
@@ -244,17 +243,17 @@ def _names_our_set(product: Product, card: CardRow) -> bool:
 
 
 def _pick(cands: list[Product], card: CardRow) -> Product:
-    """Several products share a number+name (stamped/promo variants, half-decks): prefer one whose
-    qualifier names our set, then the print whose set size matches, then the one with the fewest
-    qualifiers (never a Staff stamp over a plain one), then the shortest name, then the earliest."""
+    """Several products share a number+name (stamped/promo variants, half-decks): prefer one whose qualifier
+    names our set, then the matching set size, then the fewest qualifiers (never a Staff stamp over a plain
+    one), then the shortest name, then the earliest."""
     return min(cands, key=lambda p: (not _names_our_set(p, card),
                                      p.denom is not None and p.denom != card.official_count,
                                      *_qualifier_rank(p.name), len(p.name), p.product_id))
 
 
 def _name_score(group_name: str, set_key: str) -> int:
-    """How closely a feed group's name matches our set's name (3 exact ... 0 unrelated). Used to prefer
-    'Base Set' over 'Base Set (Shadowless)' when both contain the same cards."""
+    """How closely a feed group's name matches our set's name (3 exact ... 0 unrelated), to prefer
+    'Base Set' over 'Base Set (Shadowless)'."""
     g = name_key(group_name.split(":", 1)[-1])      # "SWSH01: Sword & Shield Base Set" -> the part after
     if not g or not set_key:
         return 0
@@ -301,10 +300,9 @@ def match_cards(cards: list[CardRow], feed: Feed) -> tuple[list[CardMatch], dict
         n = len(set_cards)
         loose = {c.id: loose_name(c.name)[0] for c in set_cards}
 
-        # Which feed group(s) is this set? Each group "covers" the cards it has a number+name hit for.
-        # Pick the group covering most cards, then keep adding groups only while they cover cards the
-        # chosen ones do not: a Radiant Collection living in a second group is picked up, but one stray
-        # reprint (Charizard 4/102 also sits in a Classic Collection) adds nothing new and is ignored.
+        # Which feed group(s) is this set? Pick the group covering the most cards, then add groups only while
+        # they cover cards the chosen ones do not (a Radiant Collection in a second group is picked up; one stray
+        # reprint adds nothing and is ignored).
         set_key = set_cards[0].set_key
 
         def choose(cover: dict[int, set[str]], need_first: int, need_more: int) -> list[int]:
@@ -362,7 +360,7 @@ def match_cards(cards: list[CardRow], feed: Feed) -> tuple[list[CardMatch], dict
     return matches, set_groups
 
 
-# ---- storing -----------------------------------------------------------------------------------
+# ---- storing ----
 
 @dataclass
 class Report:
@@ -381,10 +379,9 @@ class Report:
 
 
 def apply_matches(conn: sqlite3.Connection, matches: list[CardMatch], updated: str) -> Report:
-    """Replace a matched card's prices with the feed's. The feed is authoritative: both sources describe
-    the same TCGplayer product, so a variant only TCGdex has is stale (or just named differently), and
-    keeping it would show two prices for one print. Cards whose matched product has no market price,
-    and cards that did not match, are left exactly as they were."""
+    """Replace a matched card's prices with the feed's. The feed is authoritative: both sources describe the
+    same TCGplayer product, so a variant only TCGdex has is stale or misnamed, and keeping it would show two
+    prices for one print. Unmatched cards, and ones whose product has no market price, are left as they were."""
     report = Report(matched=len(matches), updated=updated)
     old: dict[str, float] = {
         r[0]: r[1] for r in conn.execute(
@@ -405,8 +402,8 @@ def apply_matches(conn: sqlite3.Connection, matches: list[CardMatch], updated: s
                     if not any(q.variant.startswith("1st-edition") for q, _ in rows):
                         added.append((p, m.stamped.product_id))               # 1st Edition: always a Shadowless print
                 else:
-                    # The Shadowless group's "Unlimited" rows are the Shadowless print itself, a different (and
-                    # much pricier) card than the ordinary Base Set one: keep them apart under their own name.
+                    # The Shadowless group's "Unlimited" rows are the Shadowless print itself (a much pricier card), so keep
+                    # them apart under their own name.
                     finish = "holofoil" if p.variant.endswith("holofoil") else "normal"
                     added.append((replace(p, variant=f"shadowless-{finish}"), m.stamped.product_id))
             rows += added

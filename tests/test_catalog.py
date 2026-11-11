@@ -28,7 +28,7 @@ def names(page):
     return [c["name"] for c in page.cards]
 
 
-# ---- cards inside a set -----------------------------------------------------------------------
+# ---- cards inside a set ----
 
 def test_set_cards_by_card_number_is_natural_order(conn):
     # 1, 2, 4, 10, 58 ... then the lettered gallery card; "10" must not sort before "2"
@@ -67,7 +67,7 @@ def test_unknown_sort_rejected(conn):
         catalog.list_sets(conn, sort="random")
 
 
-# ---- the sets list ----------------------------------------------------------------------------
+# ---- the sets list ----
 
 def test_sets_alpha_and_value(conn):
     alpha = catalog.list_sets(conn, sort="alpha")
@@ -93,7 +93,7 @@ def test_set_lookup(conn):
     assert catalog.get_set(conn, "nope") is None
 
 
-# ---- card search sort -------------------------------------------------------------------------
+# ---- card search sort ----
 
 def test_search_sort_by_price(conn):
     ids = lambda sort: [c["id"] for c in wl.search_cards_page(conn, "4/102", sort=sort).cards]

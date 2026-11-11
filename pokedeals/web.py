@@ -67,9 +67,9 @@ def listing_order(r: ScanRow) -> tuple:
 
 
 def row_signature(row: ScanRow) -> wl.Signature | None:
-    """Which card a listing is *about*, or None when we can't say.
+    """Which card a listing is *about*, or None.
 
-    A number-only match (the card's name is absent from the title) is likely a different card:
+    A number-only match (card name absent from the title) is likely a different card:
     "Pikachu 4/102" must not count as "Charizard 4/102".
     """
     c = row.match.card
@@ -198,8 +198,8 @@ def create_app(settings: Settings = SETTINGS, fixture: Path | None = None,
 
     @app.put("/api/notifications")
     def notifications_put(req: NotifyRequest) -> dict:
-        """Change which channels are on and how good a deal must be. `secrets` (webhook addresses, tokens, the SMTP
-        password) are stored privately and never returned; a blank one keeps what is stored."""
+        """Change which channels are on and how good a deal must be. `secrets` (webhook addresses, tokens,
+        SMTP password) are stored privately and never returned; a blank one keeps what is stored."""
         conn = connect(settings.db_path)
         try:
             try:
@@ -267,7 +267,7 @@ def create_app(settings: Settings = SETTINGS, fixture: Path | None = None,
         source.buyer_zip = zip_code
         return {"buyer_zip": zip_code}
 
-    # ---- card search + watchlist -------------------------------------------------------------
+    # ---- card search + watchlist ----
 
     @app.get("/api/cards")
     def search_cards(
@@ -289,7 +289,7 @@ def create_app(settings: Settings = SETTINGS, fixture: Path | None = None,
             raise HTTPException(404, f"unknown card id: {card_id}")
         return {"card": card, "prices": wl.card_prices(m.conn, card_id), "query": wl.card_query(card)}
 
-    # ---- sets --------------------------------------------------------------------------------
+    # ---- sets ----
 
     @app.get("/api/sets")
     def list_sets(
@@ -396,7 +396,7 @@ def create_app(settings: Settings = SETTINGS, fixture: Path | None = None,
     def remove_from_watchlist(card_id: str, m: Matcher = Depends(get_matcher)) -> dict:
         return {"removed": wl.remove_card(m.conn, card_id)}
 
-    # ---- scanning ----------------------------------------------------------------------------
+    # ---- scanning ----
 
     _details_cache: dict[str, tuple[float, dict]] = {}
 
@@ -448,8 +448,8 @@ def create_app(settings: Settings = SETTINGS, fixture: Path | None = None,
             rows = [r for r in rows if watched[r.listing.id]]
 
         def sort_key(r: ScanRow) -> tuple:
-            # deals first, then near misses by discount -- but a low-confidence match's discount is
-            # likely fiction (wrong card), so it must not float to the top of the rejected list
+            # deals first, then near misses by discount, but a low-confidence match's discount is likely fiction
+            # (wrong card), so it must not float to the top
             d = r.verdict.deal
             trusted = d is not None and d.confidence >= settings.min_confidence
             return (not r.verdict.is_deal, r.verdict.suspicious,
@@ -467,7 +467,7 @@ def create_app(settings: Settings = SETTINGS, fixture: Path | None = None,
             "rows": [to_dict(r, watched[r.listing.id]) for r in rows],
         }
 
-    # ---- the live feed -----------------------------------------------------------------------
+    # ---- the live feed ----
 
     @app.get("/api/deals")
     def deals(
@@ -481,10 +481,10 @@ def create_app(settings: Settings = SETTINGS, fixture: Path | None = None,
     ) -> dict:
         """Listings from the live feed's stored set (instant), or a one-off scan when there is no feed.
 
-        `cats` picks what to return: any of steal, deal, uncertain, fair, overpriced, suspicious, skipped (comma separated).
-        `blocked` also returns valued listings held back for a reason other than price (a weak seller ...).
-        `intl` includes sellers outside the US (default: US sellers only). `counts` always covers every category,
-        so the page can show how many are behind each filter."""
+        `cats`: any of steal, deal, uncertain, fair, overpriced, suspicious, skipped (comma separated).
+        `blocked` also returns valued listings held back for a non-price reason. `intl` includes sellers outside
+        the US (default: US only). `counts` always covers every category so the page can show what is behind
+        each filter."""
         if feed is None:
             rows, _, empty = gather([], scope, m)
             first_seen, verified_at, feed_info = {}, {}, None

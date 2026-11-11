@@ -4,10 +4,10 @@
     python start.py
 
 The first time it creates a private virtual environment (.venv) and installs the requirements; every time it
-then runs `python -m pokedeals start` inside it. That asks for your eBay keys on the very first start,
-downloads the card catalogue in the background, and opens the site. Needs only Python 3.11 or newer.
-Extra arguments go to `pokedeals start` (for example `--port 9000` or `--no-browser`). `python start.py update`
-updates the code; `backup` and `restore` save and reload your watchlist and settings.
+runs `python -m pokedeals start` inside it. That asks for your eBay keys on the first start, downloads the card
+catalogue in the background and opens the site. Needs Python 3.11+. Extra arguments go to `pokedeals start`
+(e.g. `--port 9000`, `--no-browser`). `python start.py update | backup | restore` update the code or save and
+reload your watchlist and settings.
 """
 from __future__ import annotations
 

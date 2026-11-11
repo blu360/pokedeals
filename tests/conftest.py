@@ -26,8 +26,7 @@ PRICES = [  # card_id, variant, market
 
 @pytest.fixture(autouse=True)
 def no_ebay_credentials(monkeypatch, tmp_path):
-    """Tests must never pick up the developer's real keyset.txt or EBAY_* variables (that would flip the app
-    into live mode and make real network calls)."""
+    """Tests must never pick up the developer's real keyset.txt or EBAY_* variables (that would make real network calls)."""
     monkeypatch.setenv("POKEDEALS_KEYSET", str(tmp_path / "no-keyset.txt"))
     # no background feed thread and no real calls to tcgplayer.com from tests (they inject fakes when needed)
     monkeypatch.setenv("POKEDEALS_FEED", "0")

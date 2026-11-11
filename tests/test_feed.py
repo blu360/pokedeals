@@ -134,7 +134,7 @@ def test_deals_are_not_rechecked_for_sales_so_old_ones_expire_instead(settings):
     conn.close()
     feed.poll_once()
     assert deal_ids(feed) == ["L1"] or True                                # it is re-found by the search...
-    # ...but a listing first seen longer ago than the limit is dropped by the purge, tombstoned, and not re-added
+    # ...but a listing first seen longer ago than the limit is purged, tombstoned and not re-added
     assert feed.snapshot().rows == [] or all(r.listing.id != "L1" or False for r in feed.snapshot().rows) or True
 
 
@@ -248,7 +248,7 @@ def test_listings_that_could_never_be_deals_are_not_checked(settings):
     assert feed.source.calls == 1                          # the search only: no getItem spent on it
 
 
-# ---- the fast lane: catch what was listed since the last look -------------------------------------------
+# ---- the fast lane: catch what was listed since the last look ----
 
 def test_the_fast_lane_picks_up_only_new_listings_and_values_them_at_once(settings):
     feed = make(settings, pages={"*": [listing(1)]})
@@ -312,7 +312,7 @@ def test_the_verification_allowance_grows_through_the_day_but_never_past_the_bud
     conn.close()
 
 
-# ---- prices stay current ---------------------------------------------------------------------------------
+# ---- prices stay current ----
 
 def test_a_newer_price_day_is_pulled_in_and_listings_are_revalued(settings, monkeypatch):
     from pokedeals import feed as feed_mod
@@ -405,7 +405,7 @@ def test_per_task_call_counts_are_kept(settings):
     assert tasks.get("verify_candidate", 0) + tasks.get("verify_new", 0) + tasks.get("verify_recheck", 0) == feed.source.calls - 2
 
 
-# ---- the item-check queue is ordered by what a check is worth ------------------------------------------------
+# ---- the item-check queue is ordered by what a check is worth ----
 
 def test_a_small_saving_is_not_checked_at_once_but_waits_for_the_paced_queue(settings, early_utc):
     big = unstated(1, price=250.0)                                         # saves $150
@@ -435,7 +435,7 @@ def test_the_biggest_savings_are_checked_first(settings):
     assert seen == ["L5", "L4"]
 
 
-# ---- only what can be seen is worth an eBay check -------------------------------------------------------------
+# ---- only what can be seen is worth an eBay check ----
 
 def test_listings_too_old_to_browse_are_not_spent_item_checks(settings):
     feed = make(settings, pages={"*": [unstated(1, price=250.0), unstated(2, price=250.0)]})

@@ -1,9 +1,7 @@
-"""Warning signs that a cheap listing is a fake, a different card, or a scam rather than a bargain.
+"""Warning signs that a cheap listing is a fake, the wrong card or a scam rather than a bargain.
 
-Real mispriced cards exist, but a card at 90% off is far more often counterfeit than lucky, and TCGplayer's
-price alone cannot tell the difference. So a cheap listing is only called a deal if it does not look like one
-of these. Signals come in two strengths: one *strong* signal, or any two *weak* ones, makes a listing
-"suspicious". A single weak signal is not enough (a new seller with a fair price is just a new seller).
+A card at 90% off is far more often counterfeit than lucky. One strong sign, or any two weak ones,
+makes a listing "suspicious". One weak sign alone does not (a new seller with a fair price is just new).
 """
 from __future__ import annotations
 
@@ -24,8 +22,8 @@ class Signal:
 
 def signals(listing: Listing, market: float, discount: float, settings: Settings,
             vs_ebay: float | None = None) -> list[Signal]:
-    """Every warning sign present. `discount` is against the valued (condition-adjusted) market price and
-    `vs_ebay` against what other eBay sellers ask for the same card; both are fractions (0.5 = 50% under)."""
+    """Every warning sign present. `discount` is against the condition-adjusted market price and
+    `vs_ebay` against other eBay asking prices (0.5 = 50% under)."""
     found: list[Signal] = []
     cheap = discount >= settings.min_discount          # most signs only matter when the price is tempting
 

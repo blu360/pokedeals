@@ -1,5 +1,5 @@
-"""First-run setup: download the card catalogue and prices the first time the app starts, in the background,
-so the page can show progress instead of an empty screen. Once it is done the live feed starts."""
+"""First-run setup: download the card catalogue and prices on the first start, in the background, so the
+page can show progress. When it finishes, the live feed starts."""
 from __future__ import annotations
 
 import asyncio

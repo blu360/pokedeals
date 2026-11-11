@@ -1,8 +1,7 @@
-"""Backups of what cannot be downloaded again: your watchlist and settings (ZIP, notification choices, ...).
+"""Backups of what cannot be downloaded again: your watchlist and settings.
 
-The card catalogue, prices and live listings are all re-created from the internet, so a backup is a few kilobytes
-(a gzipped JSON file per day) rather than a copy of the whole database. Secrets (eBay keys, SMTP password, bot
-tokens) are deliberately not in it: they live in the keyring or environment, see credentials.py.
+Catalogue, prices and listings are re-created from the internet, so a backup is a few KB (one gzipped JSON
+file per day). Secrets (eBay keys, SMTP password, tokens) are deliberately left out: see credentials.py.
 """
 from __future__ import annotations
 

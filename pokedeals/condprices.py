@@ -1,18 +1,18 @@
 """What a card is worth *in each condition*, from TCGplayer's own sales data.
 
-The price feed (tcgcsv) has one market price per print and nothing per condition, so Lightly Played used to be
-guessed as 85% of market. Real cards are not that tidy: Leafeon (Call of Legends) is $51.66 Near Mint but
-$30.81 Lightly Played, and a Base Set Charizard is $972 NM, $529 LP, $247 HP.
+The price feed (tcgcsv) has one market price per print, so Lightly Played used to be guessed as 85% of
+market. Real cards vary: Leafeon (Call of Legends) is $51.66 Near Mint but $30.81 Lightly Played; a Base Set
+Charizard is $972 NM, $529 LP, $247 HP.
 
-tcgplayer.com's product page shows exactly this: for each condition, a **Market Price** built from recent sales,
-plus the number sold in the last three months. This module reads the same data (one request per product returns
-every print and condition) and takes the newest market price for the condition we need. The number of sales is
-kept as a confidence measure: a condition with no sales has no market price and falls back to the estimate.
+tcgplayer.com's product page shows a **Market Price** per condition (from recent sales) and the number sold in
+three months. This module reads the same data (one request per product covers every print and condition).
+The sales count measures confidence: a condition with no sales has no market price and falls back to the
+estimate.
 
-For the card dialog it also reads the live listings (cheapest ask and how many are for sale) for context.
+For the card dialog it also reads live listings (cheapest ask, number for sale).
 
-These are the endpoints behind tcgplayer.com's own pages, not a documented public API. They can change or start
-refusing requests; every failure here degrades to the multiplier estimate, never to an error.
+These are the endpoints behind tcgplayer.com's pages, not a public API, and can change or refuse requests;
+every failure falls back to the multiplier estimate instead of raising an error.
 """
 from __future__ import annotations
 
@@ -86,9 +86,9 @@ class CondPrice:
 
     @property
     def usable(self) -> bool:
-        """TCGplayer has a market price for this condition. Even one sale is a real number, far better than a guess
-        (a Heavily Played Deoxys reverse holo is $49.99 on its last sale; the 50%-of-Near-Mint rule said $115). How
-        far to trust it is a separate question, answered by `sold` and settings.thin_market_sales."""
+        """TCGplayer has a market price for this condition. Even one sale is a real number, far better than a
+        guess (a Heavily Played Deoxys reverse holo is $49.99 on its last sale; the 50%-of-Near-Mint rule said $115).
+        How far to trust it is up to `sold` and settings.thin_market_sales."""
         return self.market is not None and self.market > 0
 
 
@@ -133,7 +133,7 @@ class TcgplayerConditions:
         conn.executescript(SCHEMA)
         conn.close()
 
-    # ---- availability ---------------------------------------------------------------------------
+    # ---- availability ----
     @property
     def available(self) -> bool:
         return time.time() >= self._paused_until
@@ -157,7 +157,7 @@ class TcgplayerConditions:
     def _fresh_after(self) -> str:
         return (datetime.now(timezone.utc) - self.ttl).isoformat()
 
-    # ---- sales-based market prices --------------------------------------------------------------
+    # ---- sales-based market prices ----
     def _fetch_history(self, product_id: int) -> tuple[int, list | None]:
         time.sleep(self.delay)
         try:
@@ -206,7 +206,7 @@ class TcgplayerConditions:
             conn.close()
 
     def has_history(self, conn: sqlite3.Connection, product_id: int) -> bool:
-        """True when we have (recently) read this product's sales history, even if it held nothing for our print."""
+        """True when we recently read this product's sales history, even if it held nothing for our print."""
         return self._has_history(conn, product_id)
 
     def get(self, conn: sqlite3.Connection, product_id: int, variant: str, cond: str) -> CondPrice | None:
@@ -219,7 +219,7 @@ class TcgplayerConditions:
                 return CondPrice(cond, r["market"], r["sold"], r["as_of"])
         return None
 
-    # ---- live listings (for the card dialog) ----------------------------------------------------
+    # ---- live listings (for the card dialog) ----
     def _query_asks(self, product_id: int, cond: str, printing: str) -> tuple[int, float | None]:
         term: dict = {"sellerStatus": "Live", "channelId": 0, "language": ["English"],
                       "condition": [CONDITION_NAMES[cond]], "printing": [printing]}
@@ -247,8 +247,8 @@ class TcgplayerConditions:
             return None
 
     def all_conditions(self, conn: sqlite3.Connection, product_id: int, variant: str) -> dict[str, CondPrice]:
-        """Every condition of one print: market price and sales, plus the live cheapest listing (fetched now,
-        a handful of requests). Used by the card dialog."""
+        """Every condition of one print: market price, sales and the live cheapest listing (fetched now, a few
+        requests). Used by the card dialog."""
         self.prefetch([(product_id, variant, c) for c in CONDITION_ORDER])
         asks: dict[str, tuple[int, float | None]] = {}
         if self.available:

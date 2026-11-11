@@ -40,10 +40,10 @@ def choose_price(
 ) -> tuple[str | None, float | None, list[str]]:
     """Pick which TCGplayer variant a listing most likely is, conservatively (lowest if unsure).
 
-    Variant keys: normal, holofoil, reverse-holofoil, unlimited(-holofoil), 1st-edition(-holofoil), and
-    shadowless-holofoil / shadowless-normal (Base Set's early print, priced separately and far higher).
-    A listing only gets a 1st Edition or Shadowless price if its title says so; otherwise those prints are
-    left out, so a regular card is never valued at a rarer print's price (or the reverse).
+    Variants: normal, holofoil, reverse-holofoil, unlimited(-holofoil), 1st-edition(-holofoil), and
+    shadowless-holofoil / shadowless-normal (Base Set's early print, priced far higher). A listing only gets
+    a 1st Edition or Shadowless price if its title says so, so a regular card is never valued at a rarer
+    print's price.
     """
     pool = {k: v for k, v in prices.items() if v is not None and v > 0}
     flags: list[str] = []
@@ -56,7 +56,7 @@ def choose_price(
     def is_holo(k: str) -> bool:
         return k.endswith("holofoil") and not is_reverse(k)
 
-    # edition: WOTC-era cards have 1st-edition / shadowless / unlimited prints priced separately
+    # edition: WOTC-era cards have separately priced 1st-edition / shadowless / unlimited prints
     first = {k: v for k, v in pool.items() if k.startswith("1st-edition")}
     shadow = {k: v for k, v in pool.items() if k.startswith("shadowless")}
     rest = {k: v for k, v in pool.items() if k not in first and k not in shadow}   # the regular prints
@@ -102,9 +102,8 @@ _REPRINT_ALIASES = {"30c": "30th", "ccc": "celebration", "25th": "celebration"}
 def _name_hit(name_key: str, padded_title: str) -> str | None:
     """Does a card's name appear in the title? 'exact', 'fuzzy', or None.
 
-    Real titles write 'Mega-Gengar-EX' for the card 'M Gengar EX' and glue 'DeoxysEX' together, so a card
-    named 'M ...' also answers to 'Mega ...', and a second pass ignores spacing altogether (5+ letters, so
-    short names like 'Abra' cannot match inside other words).
+    Titles write 'Mega-Gengar-EX' for 'M Gengar EX' and glue 'DeoxysEX' together, so 'M ...' also answers
+    to 'Mega ...', and a second pass ignores spacing (5+ letters, so 'Abra' cannot match inside other words).
     """
     variants = {name_key}
     if name_key.startswith("m "):
@@ -152,11 +151,10 @@ class Matcher:
         ).fetchall()
         return {r["variant"]: r["market"] for r in rows}
 
-    # ---- reprint collections --------------------------------------------------------------------
-    # "Classic Collection" sets (Celebrations, 30th Celebration) reprint old cards under their ORIGINAL
-    # number, so a listing titled "Charizard 4/102 ... 30th Anniversary Celebrations" is not Base Set's
-    # Charizard (~$950) but the reprint (~$135). Number and set size alone cannot tell them apart; the
-    # words in the title can, and the reprint's own cards are found by name.
+    # ---- reprint collections ----
+    # "Classic Collection" sets (Celebrations, 30th Celebration) reprint old cards under their ORIGINAL number,
+    # so "Charizard 4/102 ... 30th Anniversary Celebrations" is the ~$135 reprint, not Base Set's ~$950
+    # Charizard. Number and set size cannot tell them apart; the words in the title can.
 
     def _reprint_sets(self) -> list[dict]:
         if self._reprints is None:

@@ -49,7 +49,7 @@ def test_choose_price_conservative_when_unsure():
     assert (v, m) == ("normal", 1.0) and "variant-assumed" in flags  # never the reverse by default
 
 
-# ---- scorer -----------------------------------------------------------------
+# ---- scorer ----
 
 def _eval(matcher, title, price, shipping=0.0, **kw):
     listing = Listing(id="t", title=title, price=price, shipping=shipping,
@@ -90,7 +90,7 @@ def test_auction_window(matcher):
     assert not v.is_deal and "auction" in v.why
 
 
-# ---- gates added after the first look at real eBay data ----------------------------------------
+# ---- gates added after the first look at real eBay data ----
 
 def test_unknown_shipping_is_assumed_not_treated_as_free(matcher):
     """35% of real listings had no shipping cost; counting them as $0 flattered every one of them."""
@@ -126,7 +126,7 @@ def test_local_pickup_only_is_skipped(matcher):
     assert not v.is_deal and "local pickup only" in v.why
 
 
-# ---- price categories: Steal / Deal / Fair / Overpriced ------------------------------------------------
+# ---- price categories: Steal / Deal / Fair / Overpriced ----
 
 @pytest.mark.parametrize("price,category,is_deal", [
     (200.0, "steal", True),          # 50% under the $400 market

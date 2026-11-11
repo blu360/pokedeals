@@ -1,12 +1,12 @@
-"""The listings the live feed has seen, kept in SQLite so deals build up over time instead of vanishing.
+"""The listings the live feed has seen, kept in SQLite so deals build up over time.
 
-A listing lives in one of three states:
-  active   still believed to be for sale
-  ended    sold, ended or removed (eBay said so, or an auction passed its end time): never shown again
-  dropped  pushed out to make room for newer deals, or too old: never shown again
+A listing is in one of three states:
+  active   believed to be for sale
+  ended    sold, ended or removed: never shown again
+  dropped  pushed out by newer deals, or too old: never shown again
 
-Ended/dropped rows stay as tombstones for a while so the same item, still turning up in eBay's "newest"
-results, is not re-added. Everything here takes an open connection and commits itself.
+Ended/dropped rows stay as tombstones for a while so an item still in eBay's "newest" results is not
+re-added. Every function takes an open connection and commits itself.
 """
 from __future__ import annotations
 
@@ -30,10 +30,10 @@ class Stored:
 
 
 def upsert(conn: sqlite3.Connection, listings: list[Listing]) -> int:
-    """Add new listings and refresh the ones we already know. Returns how many were new.
+    """Add new listings and refresh known ones. Returns how many were new.
 
-    A refreshed listing keeps what a getItem check taught us (the seller's condition), because a search
-    result does not carry it. Ended and dropped rows are left alone.
+    A refreshed listing keeps what a getItem check taught us (the seller's condition), since search results
+    lack it. Ended and dropped rows are left alone.
     """
     stamp, new = now(), 0
     for l in listings:
@@ -87,13 +87,13 @@ def set_state(conn: sqlite3.Connection, ids: list[str], state: str) -> None:
 
 def purge(conn: sqlite3.Connection, *, deal_ids: set[str], nondeal_hours: int, max_age_days: int,
           max_deals: int) -> dict[str, int]:
-    """Forget what is no longer worth keeping. Returns counts of what happened.
+    """Forget what is no longer worth keeping. Returns counts.
 
-    - an auction past its end time has ended;
-    - a listing that is not a deal is forgotten `nondeal_hours` after it was first seen;
-    - nothing is kept past `max_age_days`;
-    - when there are more than `max_deals` deals, the OLDEST are dropped (newer ones push them out);
-    - tombstones are deleted after a fortnight.
+    - an auction past its end time has ended
+    - a non-deal is forgotten `nondeal_hours` after it was first seen
+    - nothing is kept past `max_age_days`
+    - beyond `max_deals` deals, the OLDEST are dropped
+    - tombstones are deleted after a fortnight
     """
     stamp = datetime.now(timezone.utc)
     out = {"ended": 0, "dropped": 0, "deleted": 0}

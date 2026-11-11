@@ -1,4 +1,4 @@
-"""Glue shared by the CLI and the web UI: pick a listing source, run listings through parse → match → score."""
+"""Glue shared by the CLI and the web UI: pick a listing source, then parse, match and score listings."""
 from __future__ import annotations
 
 import statistics
@@ -65,9 +65,9 @@ def scan_listings(
     listings: Iterable[Listing], matcher: Matcher, settings: Settings = SETTINGS,
     conditions: TcgplayerConditions | None = None, fetch: bool = True,
 ) -> list[ScanRow]:
-    """Evaluate each distinct listing (by id), keeping input order, re-value the promising ones with real
-    per-condition prices from TCGplayer (`conditions`; `fetch=False` uses only what is already cached),
-    then cross-check deals against the other eBay listings for the same card."""
+    """Evaluate each distinct listing (by id, in input order), re-value the promising ones with real
+    per-condition TCGplayer prices (`fetch=False` uses only the cache), then cross-check deals against
+    other eBay listings of the same card."""
     seen: set[str] = set()
     rows: list[ScanRow] = []
     for listing in listings:
@@ -83,15 +83,15 @@ def scan_listings(
 def _refine_with_conditions(rows: list[ScanRow], matcher: Matcher, settings: Settings,
                             conditions: TcgplayerConditions, fetch: bool) -> list[ScanRow]:
     """Replace the guessed condition multiplier with what TCGplayer's listings say a copy in that condition
-    costs. Only listings that could possibly be deals (priced under the market price) are looked up, since
-    each lookup is a web request; a condition TCGplayer has too few listings for keeps the estimate."""
+    costs. Only possible deals are looked up (each is a web request); a condition with too few listings
+    keeps the estimate."""
     plan: list[tuple[int, int, str, str]] = []
     for i, row in enumerate(rows):
         d, card = row.verdict.deal, row.match.card
         if d is None or card is None or d.confidence < settings.min_confidence:
             continue
         # a condition's sales-based price can sit above the blended market price (Near Mint often does), so
-        # give listings a little headroom above it before ruling them out
+        # allow a little headroom before ruling listings out
         if d.match.market < settings.condition_lookup_min_market or d.total_cost >= d.match.market * 1.3:
             continue
         pid = matcher.product_id(card.id, d.match.variant)
@@ -99,8 +99,8 @@ def _refine_with_conditions(rows: list[ScanRow], matcher: Matcher, settings: Set
             plan.append((i, pid, d.match.variant, d.condition))
     if not plan:
         return rows
-    # Most promising first: when there are more lookups than the per-scan limit, the listings closest to being
-    # deals are the ones that must have real condition prices.
+    # Most promising first: if there are more lookups than the limit, the listings closest to being
+    # deals get real condition prices.
     plan.sort(key=lambda p: rows[p[0]].verdict.deal.discount, reverse=True)
     if fetch:
         conditions.prefetch([(pid, variant, cond) for _, pid, variant, cond in plan],
@@ -112,7 +112,7 @@ def _refine_with_conditions(rows: list[ScanRow], matcher: Matcher, settings: Set
         value = condition_value(cp)
         thin = None
         if value is not None and cp.sold < settings.thin_market_sales:
-            # TCGplayer has a price, but little behind it (with no sales in 3 months it is the last price it recorded)
+            # TCGplayer has a price but little behind it (with no sales in 3 months it is the last price recorded)
             thin = (f"Only {cp.sold} {'sale' if cp.sold == 1 else 'sales'} of this card in this condition in the last 3 months"
                     if cp.sold else "No sales of this card in this condition in the last 3 months (this is the last price TCGplayer recorded)")
         elif value is None and conditions.has_history(matcher.conn, pid):
@@ -127,13 +127,12 @@ def _refine_with_conditions(rows: list[ScanRow], matcher: Matcher, settings: Set
 
 
 def _apply_ebay_cohort_check(rows: list[ScanRow], settings: Settings) -> list[ScanRow]:
-    """A deal must be cheap against what eBay sellers are asking, not just against TCGplayer.
+    """A deal must be cheap against what eBay sellers ask, not just against TCGplayer.
 
-    TCGplayer's price can sit far above eBay's for a card (thin market, different buyers). When every eBay
-    listing of a card is "60% under market", that is not eight bargains: eBay just trades that card lower,
-    and the TCGplayer reference is wrong for buying or reselling on eBay. So within each card (and print),
-    costs are put on a Near Mint footing and compared with the median; a listing only stays a deal if it
-    beats the median by `max_cost_vs_ebay_median`. Needs `min_cohort` comparable listings to judge.
+    TCGplayer can price a card far above eBay (thin market, different buyers). If every listing of a card is
+    "60% under market", eBay just trades that card lower. So within each card and print, costs are put on a
+    Near Mint footing and compared with the median; a listing stays a deal only if it beats the median by
+    `max_cost_vs_ebay_median`. Needs `min_cohort` comparable listings.
     """
     cohorts: dict[tuple, list[tuple[int, float]]] = defaultdict(list)
     for i, row in enumerate(rows):
@@ -169,5 +168,5 @@ def _apply_ebay_cohort_check(rows: list[ScanRow], settings: Settings) -> list[Sc
                 else:
                     verdict = replace(verdict, reasons=reasons)
             out[i] = replace(row, verdict=verdict)
-    # the category is judged on the smaller of the saving against TCGplayer and against eBay's own prices
+    # the category uses the smaller of the saving against TCGplayer and against eBay's own prices
     return [replace(r, verdict=with_category(r.verdict, settings)) for r in out]

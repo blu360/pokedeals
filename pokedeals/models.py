@@ -34,7 +34,7 @@ class Listing:
         """Build from an eBay Browse API `itemSummaries[]` entry (shape verified against live responses)."""
         price = item.get("price") or {}
         ship_opts = item.get("shippingOptions") or []
-        # CALCULATED shipping has no cost unless the request carried the buyer's location
+        # calculated shipping has no cost without the buyer's location
         ship_cost = ((ship_opts[0].get("shippingCost") or {}) if ship_opts else {}).get("value")
         seller = item.get("seller") or {}
         end = item.get("itemEndDate")
@@ -51,7 +51,7 @@ class Listing:
             seller_feedback_pct=float(seller["feedbackPercentage"]) if seller.get("feedbackPercentage") else None,
             seller_feedback_score=int(seller["feedbackScore"]) if seller.get("feedbackScore") is not None else None,
             condition=item.get("condition"),
-            # the condition NAME is translated for non-US viewers ("Valutata", "Gradée"); the id is not
+            # the condition name is translated for non-US viewers; the id is not
             graded=str(item.get("conditionId") or "") == "2750",
             pickup_only=not ship_opts and bool(item.get("pickupOptions")),
             seller_name=seller.get("username"),

@@ -1,8 +1,8 @@
-"""Turn a messy eBay title into structured fields. Pure functions, no DB or network.
+"""Turn a messy eBay title into structured fields. Pure functions: no DB, no network.
 
-The single most valuable signal is the printed card number ("136/189"): number + set size pins
-down a card far more reliably than the name does. Everything else is either a filter
-(graded / lot / proxy / non-English) or a price modifier (finish, condition).
+The printed card number ("136/189") is the strongest signal: with the set size it pins down a card
+far better than the name. The rest are filters (graded, lot, proxy, non-English) or price modifiers
+(finish, condition).
 """
 from __future__ import annotations
 
@@ -18,18 +18,15 @@ _NUMBER = re.compile(
 
 _GRADED = re.compile(r"\b(psa|bgs|cgc|sgc|beckett|graded|slab(?:bed)?)\b", re.I)
 
-# NOTE "collection" is deliberately absent: it is part of real set names ("Classic Collection",
-# "Legendary Collection"), and an actual collection for sale says "lot", "bundle" or "binder" anyway.
-# Quantity markers ("2x", "x10") must be attached: with a space allowed, "Regigigas LV.X 100/100" reads as
-# "x100" and every LV.X card was skipped as a lot.
+# NOTE: "collection" is left out on purpose: it is part of real set names ("Classic Collection").
+# Quantity markers ("2x", "x10") must be attached, or "Regigigas LV.X 100/100" reads as "x100".
 _LOT = re.compile(
     r"\b(lot|lots|bundle|bulk|playset|binder|complete set|master set|set of|"
     r"mystery|repack|[2-9]x|\d{2,}x|x[2-9]|x\d{2,}|cards? lot)\b", re.I
 )
 
-# Prints that share a regular card's name and number but are different, differently priced cards (stamped
-# promos, tournament decks, misprints). We hold no separate price for them, so valuing them against the
-# regular card would invent deals; they are skipped and the reason says why.
+# Prints that share a regular card's name and number but are priced differently (stamped promos,
+# misprints). We have no price for them, so they are skipped.
 _OTHER_PRINT = re.compile(
     r"\b(world\s+champ(?:ionships?|s)?(?:\s+decks?)?|wcd|wcs|staff|pre-?release|stamped|pok[eé]mon cent(?:er|re)|"
     r"build\s*(?:&|and)\s*battle|cosmos(?:\s+holo)?|cracked\s+ice|mis-?print|miscut|error)\b", re.I
@@ -50,7 +47,7 @@ _NON_ENGLISH = re.compile(
 )
 
 _FIRST_ED = re.compile(r"\b(1st|first)\s*(edition|ed)\b|\b1st\b", re.I)
-# Base Set's early print (no drop shadow on the art box); TCGplayer prices it separately and far higher.
+# Base Set's early print (no drop shadow); TCGplayer prices it separately and far higher
 _SHADOWLESS = re.compile(r"(?<!non-)(?<!non )(?<!not )(?<!non)\bshadow[\s-]*less\b", re.I)
 _REVERSE = re.compile(r"\b(reverse|rev)\s*(holo(foil)?)?\b", re.I)
 _NON_HOLO = re.compile(r"\bnon[\s-]?holo(foil)?\b", re.I)
@@ -60,9 +57,9 @@ _BARE_HP = re.compile(r"\bhp\b", re.I)
 
 
 def _has_hp_condition(title: str) -> bool:
-    """'HP' means heavily played, unless it is the card's hit-point stat ('120 HP' / 'HP 120').
+    """'HP' means heavily played, unless it is the hit-point stat ('120 HP' / 'HP 120').
 
-    A number directly before it is a stat -- except a card number like '136/189 HP'.
+    A number right before it is a stat, except a card number like '136/189 HP'.
     """
     for m in _BARE_HP.finditer(title):
         before, after = title[:m.start()], title[m.end():]
@@ -74,7 +71,7 @@ def _has_hp_condition(title: str) -> bool:
     return False
 
 
-# order matters: first match wins, worst conditions first so "NM-LP" style hedges read pessimistically
+# first match wins, worst conditions first so hedges like "NM-LP" read pessimistically
 _CONDITIONS: list[tuple[str, re.Pattern]] = [
     ("DMG", re.compile(r"\b(damaged|dmg|poor)\b", re.I)),
     ("HP", re.compile(r"\bheav(?:y|ily)[\s-]*play(?:ed)?\b", re.I)),

@@ -56,7 +56,7 @@ def priced(matcher):
     return matcher
 
 
-# ---- parsing ---------------------------------------------------------------------------------------
+# ---- parsing ----
 
 def test_history_gives_the_newest_market_price_per_print_and_condition():
     rows = {(printing, cond): (price, sold, as_of) for printing, cond, price, sold, as_of in parse_history(HISTORY)}
@@ -72,15 +72,15 @@ def test_buckets_without_a_price_are_skipped_and_order_does_not_matter():
 
 
 def test_any_market_price_is_usable_even_with_one_sale_but_no_price_is_not():
-    """A one-sale price is thin, but it is TCGplayer's own number: far better than a multiplier guess. How far to trust
-    it is the 'uncertain' flag's job."""
+    """A one-sale price is thin but still TCGplayer's own number, far better than a multiplier guess. The 'uncertain'
+    flag handles how far to trust it."""
     assert CondPrice("LP", 30.0, 10).usable and CondPrice("LP", 30.0, 1).usable and CondPrice("LP", 30.0, 0).usable
     assert not CondPrice("LP", None, 9).usable and not CondPrice("LP", 0.0, 9).usable
     assert condition_value(CondPrice("LP", 30.456, 10)) == 30.46
     assert condition_value(CondPrice("DMG", 60.0, 1)) == 60.0 and condition_value(None) is None
 
 
-# ---- fetching and caching ----------------------------------------------------------------------------
+# ---- fetching and caching ----
 
 def test_one_request_per_product_covers_every_print_and_condition(db_path, matcher):
     calls = []
@@ -122,7 +122,7 @@ def test_all_conditions_for_the_card_dialog_adds_the_live_cheapest_listing(db_pa
     assert got["DMG"].sold == 1 and got["DMG"].market == 60.0 and got["DMG"].usable
 
 
-# ---- valuation -----------------------------------------------------------------------------------
+# ---- valuation ----
 
 def scan(priced, conditions, price, condition="LP"):
     listing = Listing(id="x", title=f"{TITLE} {condition}", price=price, shipping=0.0, seller_feedback_pct=99.5,
@@ -175,7 +175,7 @@ def test_a_down_site_leaves_valuation_working(priced, db_path):
     assert row.verdict.deal.fair_value == pytest.approx(340.0)
 
 
-# ---- uncertain deals: too few sales for TCGplayer's price to be trusted -------------------------------------
+# ---- uncertain deals: too few sales for TCGplayer's price to be trusted ----
 
 def thin_history(sold):
     return {"result": [sku("Holofoil", "Lightly Played", [210], sold), sku("Holofoil", "Near Mint", [380], 20)]}

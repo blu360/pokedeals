@@ -17,7 +17,7 @@ from pokedeals.web import create_app
 ROOT = Path(__file__).resolve().parent.parent
 
 
-# ---- where the keys come from -----------------------------------------------------------------------
+# ---- where the keys come from ----
 
 def test_a_key_file_named_by_the_environment_is_read_like_docker_secrets(tmp_path, monkeypatch):
     f = tmp_path / "id.txt"
@@ -53,7 +53,7 @@ def test_the_key_file_is_private_to_the_owner():
     assert credentials.credentials_file().stat().st_mode & 0o077 == 0
 
 
-# ---- the prompt ----------------------------------------------------------------------------------------
+# ---- the prompt ----
 
 def scripted(answers):
     it = iter(answers)
@@ -105,7 +105,7 @@ def test_check_keys_never_returns_the_keys(monkeypatch):
     assert not ok and "SECRET" not in detail
 
 
-# ---- the first download -------------------------------------------------------------------------------
+# ---- the first download ----
 
 def test_an_empty_catalogue_is_detected(db_path, tmp_path):
     assert not catalogue_empty(Settings(db_path=db_path))
@@ -145,7 +145,7 @@ def test_the_setup_endpoint_reports_ready_for_a_normal_start(db_path):
     assert client.get("/api/setup").json() == {"state": "ready", "percent": 100, "message": "", "error": None}
 
 
-# ---- the one-command launcher -----------------------------------------------------------------------
+# ---- the one-command launcher ----
 
 @pytest.fixture()
 def launcher(tmp_path, monkeypatch):

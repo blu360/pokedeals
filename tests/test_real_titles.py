@@ -7,7 +7,7 @@ from pokedeals.parser import parse_title
 from pokedeals.textnorm import local_key, name_key
 
 
-# ---- parser: lots ------------------------------------------------------------------------------
+# ---- parser: lots ----
 
 @pytest.mark.parametrize("title", [
     "Regigigas LV.X 100/100 Stormfront Holo",                 # "X 100" is NOT "x100 copies" (skipped 31 real listings)
@@ -31,7 +31,7 @@ def test_real_lots_are_still_caught(title):
     assert "lot/multiple" in parse_title(title).reasons
 
 
-# ---- parser: prints we cannot value ------------------------------------------------------------
+# ---- parser: prints we cannot value ----
 
 @pytest.mark.parametrize("title,phrase", [
     ("Deoxys ex - 2006 (Jason Klaczynski) 93/106 World Championship Decks Regular", "world championship decks"),
@@ -58,7 +58,7 @@ def test_ordinary_titles_are_not_flagged_as_other_prints(title):
     assert not any(r.startswith("different print") for r in parse_title(title).reasons)
 
 
-# ---- Shadowless --------------------------------------------------------------------------------
+# ---- Shadowless ----
 
 @pytest.mark.parametrize("title,expected", [
     ("Charizard Shadowless 4/102 Base Set Holo Rare Stage 2 HP 120", True),
@@ -108,7 +108,7 @@ def test_a_shadowless_title_is_valued_as_shadowless_through_the_matcher(tmp_path
     assert shadow.confidence >= 0.85 and "shadowless-price-missing" not in shadow.flags
 
 
-# ---- name matching -----------------------------------------------------------------------------
+# ---- name matching ----
 
 @pytest.mark.parametrize("card,title,expected", [
     ("m gengar ex", " lightly played mega gengar ex 121 119 secret rare ", "exact"),   # "Mega-Gengar-EX"
@@ -126,7 +126,7 @@ def test_stem_makes_plural_titles_match_singular_set_names():
     assert _stem("celebrations") == "celebration" and _stem("glass") == "glass" and _stem("ex") == "ex"
 
 
-# ---- reprint collections (Classic Collection) --------------------------------------------------
+# ---- reprint collections (Classic Collection) ----
 
 SETS = [  # id, name, official_count, release
     ("base1", "Base Set", 102, "1999-01-09"),

@@ -22,19 +22,16 @@ class Deal:
     margin: float               # worth minus cost, in USD
     confidence: float
     flags: tuple[str, ...]
-    # Filled in by the pipeline when enough other eBay listings of the same card were seen (see
-    # pipeline._apply_ebay_cohort_check): what a typical eBay listing costs in THIS listing's condition,
-    # how far under that this one is, and how many listings that was based on.
+    # Filled in by the pipeline's eBay cross-check: the typical eBay cost in THIS listing's condition,
+    # how far under it this listing is, and how many listings that rests on.
     ebay_typical: float | None = None
     vs_ebay: float | None = None
     cohort_size: int = 0
-    # fair_value / market: how much of the market price a copy in THIS condition is worth. Either the
-    # settings' multiplier (an estimate) or, when TCGplayer's listings for that condition were read, the
-    # real ratio (`cond_sold` = how many sales in the last 3 months that price rests on; 0 = estimate).
+    # fair_value / market: how much of the market price a copy in THIS condition is worth. The settings'
+    # multiplier (an estimate) or the real TCGplayer ratio (`cond_sold` = sales it rests on; 0 = estimate).
     factor: float = 1.0
     cond_sold: int = 0
-    # Why the worth is not trustworthy ("Only 3 sales in the last 3 months"), or None when TCGplayer's price for
-    # this condition rests on enough sales.
+    # Why the worth is not trustworthy (e.g. "Only 3 sales in the last 3 months"), or None.
     thin_reason: str | None = None
 
     @property
@@ -60,8 +57,8 @@ class Verdict:
 
     @property
     def blocked(self) -> bool:
-        """Valued, not suspicious, and not a deal for a reason other than its price (a weak seller, an unsure
-        match, an auction far from ending ...): it is hidden unless the user asks for such listings."""
+        """Valued, not suspicious, and not a deal for a reason other than price (weak seller, unsure match,
+        auction far from ending). Hidden unless the user asks for such listings."""
         return (self.deal is not None and not self.is_deal and not self.suspicious
                 and self.label not in ("Not cheap enough", "Not cheap on eBay"))
 
@@ -78,8 +75,8 @@ def categorize(discount: float, settings: Settings = SETTINGS) -> str:
 
 
 def with_category(v: Verdict, settings: Settings = SETTINGS) -> Verdict:
-    """The verdict with its category set. Judged on the smaller of the saving against TCGplayer and against
-    what other eBay sellers ask, so a card eBay trades below TCGplayer is not called a Steal."""
+    """The verdict with its category set, judged on the smaller of the saving against TCGplayer and
+    against eBay asking prices, so a card eBay trades below TCGplayer is not called a Steal."""
     if v.deal is None:
         return v
     if v.suspicious:
@@ -104,8 +101,8 @@ _CONDITION_ORDER = ["NM", "LP", "MP", "HP", "DMG"]          # best to worst
 
 
 def _worse(*conditions: str | None) -> str | None:
-    """The worst of the conditions that are known. The seller's Card Condition field and the title can
-    disagree ("Near Mint" ticked, "heavily played" in the title); believe the pessimistic one."""
+    """The worst of the known conditions: the seller's field and the title can disagree, so believe
+    the pessimistic one."""
     known = [c for c in conditions if c in _CONDITION_ORDER]
     return max(known, key=_CONDITION_ORDER.index) if known else None
 
@@ -114,8 +111,8 @@ def evaluate(
     listing: Listing, parsed: ParsedTitle, match: MatchResult, settings: Settings = SETTINGS,
     cond_value: float | None = None, cond_sold: int = 0, thin_reason: str | None = None,
 ) -> Verdict:
-    """`cond_value`: what TCGplayer's own listings say a copy in this condition is worth (see condprices.py);
-    without it the worth is the market price times the settings' condition multiplier."""
+    """`cond_value`: what TCGplayer's listings say a copy in this condition is worth (see condprices.py);
+    without it, the market price times the settings' condition multiplier."""
     return with_category(_evaluate(listing, parsed, match, settings, cond_value, cond_sold, thin_reason), settings)
 
 
@@ -160,7 +157,7 @@ def _evaluate(
                 factor=fair / match.market, cond_sold=cond_sold if cond_value is not None else 0,
                 thin_reason=thin_reason)
 
-    # --- gates: each returns the valued deal so callers can still show near-misses ---
+    # ---- gates: each returns the valued deal so callers can still show near-misses ----
     found = signals(listing, match.market, discount, settings)
     reasons = tuple(f.text for f in found)
 
@@ -178,8 +175,8 @@ def _evaluate(
             return reject(f"auction ends in {hours_left:.1f}h (current bid not meaningful yet)", "Auction")
         deal = replace(deal, flags=deal.flags + ("auction-current-bid",))
 
-    # Before the seller and discount gates: a 99%-off listing from a brand-new seller is a scam to warn about,
-    # not just "a seller with too little feedback".
+    # Checked first: a 99%-off listing from a brand-new seller is a scam to warn about, not just
+    # "a seller with too little feedback".
     if is_suspicious(found):
         return Verdict(deal, False, "Looks like a fake or a scam: " + " ".join(reasons), "Suspicious",
                        suspicious=True, reasons=reasons)

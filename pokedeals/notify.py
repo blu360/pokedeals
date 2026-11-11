@@ -1,8 +1,7 @@
-"""Tell people about new deals: email, Discord, Telegram and ntfy.sh (desktop notifications come from the page itself).
+"""Tell people about new deals: email, Discord, Telegram and ntfy.sh (desktop notifications come from the page).
 
-Choices (which channels, how good a deal) live in the database; anything that works like a password (SMTP password,
-Discord webhook address, Telegram bot token, ntfy topic) is kept with the other secrets, see credentials.py, and is
-never sent back to the page or written into an error message.
+Choices live in the database; secrets (SMTP password, webhook address, bot token, ntfy topic) are kept with
+the other secrets (see credentials.py) and are never sent to the page or put in an error message.
 """
 from __future__ import annotations
 
@@ -38,7 +37,7 @@ class NotifyError(Exception):
     """A delivery problem, worded so it can be shown to the user (never contains a secret)."""
 
 
-# ---- configuration -----------------------------------------------------------------------------------
+# ---- configuration ----
 
 def load_config(conn) -> dict:
     stored = {}
@@ -119,7 +118,7 @@ def save_config(conn, patch: dict, secrets: dict[str, str] | None = None, clear:
     return cfg
 
 
-# ---- what gets said ----------------------------------------------------------------------------------
+# ---- what gets said ----
 
 def describe(row) -> str:
     v, d = row.verdict, row.verdict.deal
@@ -145,7 +144,7 @@ def wanted_categories(cfg: dict) -> set[str]:
     return cats | ({"uncertain"} if cfg["include_uncertain"] else set())
 
 
-# ---- delivery ----------------------------------------------------------------------------------------
+# ---- delivery ----
 
 def _post(url: str, service: str, client: httpx.Client | None, **kw) -> None:
     try:
@@ -204,7 +203,7 @@ def send(cfg: dict, title: str, body: str, link: str | None, channels: list[str]
     return result
 
 
-# ---- the feed's hook ---------------------------------------------------------------------------------
+# ---- the feed's hook ----
 
 def announce(conn, rows: list, first_seen: dict[str, str | None], *, background: bool = True,
              on_result: Callable[[dict], None] | None = None) -> int:

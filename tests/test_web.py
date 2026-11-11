@@ -302,7 +302,7 @@ def test_live_source_failure_becomes_502(db_path, monkeypatch):
     assert r.status_code == 502 and "eBay request failed" in r.json()["detail"]
 
 
-# ---- buyer ZIP (entered in the UI) --------------------------------------------------------------
+# ---- buyer ZIP (entered in the UI) ----
 
 def test_zip_can_be_set_and_is_applied_to_the_source(db_path, monkeypatch):
     src = RecordingSource()
@@ -353,7 +353,7 @@ def test_zip_is_not_offered_in_sample_mode(client):
     assert client.put("/api/settings/zip", json={"zip": "64101"}).status_code == 409
 
 
-# ---- suspicious listings -------------------------------------------------------------------------
+# ---- suspicious listings ----
 
 def test_scan_marks_fakes_suspicious_and_keeps_them_out_of_deals(db_path, monkeypatch):
     fake = Listing(id="fake", title="Charizard 4/102 Base Set Holo NM", price=5.0, shipping=0.0,
@@ -381,7 +381,7 @@ def test_card_listing_stats_leave_suspicious_out(db_path, monkeypatch):
     assert data["stats"]["listings"] == 1 and data["rows"][-1]["id"] == "fake"
 
 
-# ---- live feed endpoints, deals first ------------------------------------------------------------
+# ---- live feed endpoints, deals first ----
 
 def feed_client(db_path, monkeypatch, listings):
     from dataclasses import replace as rep
@@ -562,7 +562,7 @@ def test_card_conditions_off(client):
     assert client.get("/api/cards/base1-4/conditions").json() == {"available": False, "variants": []}
 
 
-# ---- listing popup details -------------------------------------------------------------------------
+# ---- listing popup details ----
 
 def test_listing_details_come_from_ebay(db_path, monkeypatch):
     src = RecordingSource()

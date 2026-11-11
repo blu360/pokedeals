@@ -16,7 +16,7 @@ PROD_ID = "Someone-pkdeals-PRD-0123456789ab-cdef0123"
 PROD_SECRET = "PRD-0123456789ab-0123-4567-89ab-cdef"
 
 
-# ---- keyset.txt --------------------------------------------------------------------------------
+# ---- keyset.txt ----
 
 def test_load_keyset_in_the_format_ebays_portal_shows(tmp_path):
     f = tmp_path / "keyset.txt"
@@ -87,7 +87,7 @@ def test_load_keyset_missing_or_junk_file(tmp_path):
     assert load_keyset(junk) == {}
 
 
-# ---- environment detection ---------------------------------------------------------------------
+# ---- environment detection ----
 
 @pytest.mark.parametrize("ident,secret,expected", [
     (SANDBOX_ID, SANDBOX_SECRET, "sandbox"),
@@ -131,7 +131,7 @@ def test_no_credentials_anywhere(monkeypatch):
     assert (s.ebay_client_id, s.ebay_client_secret) == ("", "")
 
 
-# ---- EbaySource talks to the right host --------------------------------------------------------
+# ---- EbaySource talks to the right host ----
 
 def recording_source(env: str, handler=None):
     seen: list[httpx.Request] = []
@@ -233,7 +233,7 @@ def test_empty_category_is_left_out_of_the_request():
     assert "category_ids" not in next(r for r in seen if "search" in r.url.path).url.params
 
 
-# ---- errors: informative, and never leak credentials ------------------------------------------
+# ---- errors: informative, and never leak credentials ----
 
 def test_token_failure_explains_itself_without_leaking_the_secret():
     def handler(request):
@@ -264,7 +264,7 @@ def test_error_body_that_is_not_json_still_raises_cleanly():
         src.search("x")
 
 
-# ---- the UI is told which environment it is talking to -----------------------------------------
+# ---- the UI is told which environment it is talking to ----
 
 class FakeSource:
     def __init__(self, env):

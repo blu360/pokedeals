@@ -1,7 +1,7 @@
-﻿"""A deal must be cheap against other eBay listings of the same card, not only against TCGplayer.
+﻿"""A deal must be cheap against other eBay listings of the card, not only against TCGplayer.
 
 Real case: eight Mega Gengar EX listings at $116-$250 against a TCGplayer market of $503. That is not eight
-bargains; eBay just trades the card below TCGplayer, so the TCGplayer reference was wrong for eBay.
+bargains: eBay just trades the card below TCGplayer.
 """
 import pytest
 
@@ -28,8 +28,8 @@ def deals(rows):
 
 
 def test_when_every_listing_is_far_below_tcgplayer_only_the_standouts_are_deals(matcher):
-    # all ~50% under TCGplayer's $400, but that is simply eBay's price; only listings at least 10% under what
-    # eBay sellers ask (the $220 median) are deals: $150 and $190, not the $200-$260 crowd
+    # all ~50% under TCGplayer's $400, but that is just eBay's price; only listings 10%+ under the $220 median
+    # are deals: $150 and $190, not the $200-$260 crowd
     rows = scan(matcher, [190, 200, 210, 220, 230, 240, 250, 260, 150])
     assert deals(rows) == [150.0, 190.0]
     rejected = [r for r in rows if r.listing.price == 250][0].verdict

@@ -15,7 +15,7 @@ from pokedeals.feed import Feed, record_calls
 from pokedeals.web import create_app
 
 
-# ---- backups ----------------------------------------------------------------------------------------
+# ---- backups ----
 
 def test_a_backup_holds_choices_but_not_tallies_or_caches(db_path):
     conn = connect(db_path)
@@ -61,7 +61,7 @@ def test_restoring_puts_the_watchlist_and_settings_back_but_skips_unknown_cards(
     assert get_setting(conn, "buyer_zip") == "10001"
 
 
-# ---- the status report ------------------------------------------------------------------------------
+# ---- the status report ----
 
 def test_usage_is_summed_against_the_limit_and_warns_near_it(db_path):
     s = Settings(db_path=db_path, ebay_daily_limit=1000)
@@ -96,7 +96,7 @@ def test_the_health_endpoint_and_backup_button(db_path):
     assert made["made"].startswith("userdata-") and len(made["backups"]) == 1
 
 
-# ---- chores: the daily backup and update check --------------------------------------------------------
+# ---- chores: the daily backup and update check ----
 
 def make_feed(db_path, monkeypatch, result=None):
     s = Settings(db_path=db_path)
@@ -122,7 +122,7 @@ def test_chores_can_be_switched_off(db_path, monkeypatch):
     assert backup.list_backups(db_path) == [] and feed.status.get("update") is None
 
 
-# ---- updates -----------------------------------------------------------------------------------------
+# ---- updates ----
 
 def fake_github(status, body=None):
     return httpx.Client(transport=httpx.MockTransport(lambda req: httpx.Response(status, json=body or {})))

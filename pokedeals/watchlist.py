@@ -1,8 +1,7 @@
 """Card search over the local DB, and the user's watchlist.
 
-A watched card is identified for matching purposes by a *signature* (name, number, set size) rather
-than its card id: the same print can be listed under several set ids, and an ambiguous eBay title
-("Charizard 4/102") may be attributed to a sibling set. The signature treats those as the same card.
+A watched card is matched by a *signature* (name, number, set size), not its card id: the same print can
+be listed under several set ids, and an ambiguous title ("Charizard 4/102") may point at a sibling set.
 """
 from __future__ import annotations
 
@@ -18,17 +17,13 @@ _NUMBER = re.compile(r"(?<![\w/])([A-Za-z]{0,4}\d{1,3})\s*/\s*([A-Za-z]{0,4}\d{1
 _MAX_TOKENS = 6
 MAX_PAGE = 50   # most cards returned per request; callers page with offset
 
-# How a card's prices are presented (one place, so the list, the sort and the set value agree):
-#   market_price  the average of its REGULAR prints (anything that is not a reverse holo, a 1st Edition or
-#                 Shadowless). For the great majority of cards that is a single print: simply its price.
-#   reverse_price the reverse holofoil price, if that print exists (else NULL -> shown as N/A)
-#   stamped_price the 1st Edition (stamped) price, if that print exists
-#   shadowless_price  Base Set's Shadowless print, if it exists (TCGplayer prices it far above the ordinary one)
-#   sort_price    what price sorting uses: market_price, or whichever other price a card has if it has
-#                 no regular print (e.g. a promo that only exists as a reverse holo)
-# Averaging the special prints in with the regular one would blur them (Legendary Collection Slowpoke is
-# $1.65 normal and $1,000 reverse holo; Base Set Charizard is $955 unlimited and $2,258 Shadowless),
-# which is why they are separate columns.
+# How a card's prices are shown (one place, so the list, sort and set value agree):
+#   market_price      average of its REGULAR prints (not reverse holo, 1st Edition or Shadowless); usually one
+#   reverse_price     the reverse holofoil price, if that print exists (else NULL, shown as N/A)
+#   stamped_price     the 1st Edition price, if it exists
+#   shadowless_price  Base Set's Shadowless print, if it exists (priced far above the ordinary one)
+#   sort_price        what price sorting uses: market_price, or another price if there is no regular print
+# They are separate columns because averaging would blur them (Base Set Charizard: $955 unlimited, $2,258 Shadowless).
 REGULAR = ("p.variant != 'reverse-holofoil' AND p.variant NOT LIKE '1st-edition%' "
            "AND p.variant NOT LIKE 'shadowless%'")
 
@@ -84,13 +79,12 @@ def search_cards_page(
 ) -> CardPage:
     """Find cards by free text: name and/or set words, plus an optional number like '4/102' or '58'.
 
-    Every word must match the card name or the set name (substring), so "char base" finds Base Set
-    Charizard. `total` is the full match count so callers can page through all of it.
+    Every word must match the card or set name (substring), so "char base" finds Base Set Charizard. `total` is
+    the full match count, for paging.
 
-    sort: "relevance" = exact-name matches first, then highest price; "price_desc" / "price_asc" order
-    by each card's displayed market price (see the notes above `_SELECT`). Unpriced cards come last
-    either way, and ordering is applied in SQL so paging stays consistent (sorting a single page
-    client-side would be wrong).
+    sort: "relevance" = exact-name matches first, then highest price; "price_desc" / "price_asc" use each card's
+    displayed market price (see `_SELECT`). Unpriced cards come last either way. Sorting is done in SQL so
+    paging stays consistent.
     """
     if sort not in SEARCH_SORTS:
         raise ValueError(f"unknown sort {sort!r}; expected one of {SEARCH_SORTS}")

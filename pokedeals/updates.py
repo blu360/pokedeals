@@ -1,7 +1,7 @@
-"""Is a newer version available? Compares this checkout's commit with the repository's main branch on GitHub.
+"""Is a newer version available? Compares this checkout's commit with the main branch on GitHub.
 
-Nothing is changed automatically: the page shows a notice, and `python start.py update` pulls the new code and
-installs any new requirements (Docker users rebuild the image instead).
+Nothing changes automatically: the page shows a notice, and `python start.py update` pulls the new code and
+installs new requirements (Docker users rebuild the image).
 """
 from __future__ import annotations
 

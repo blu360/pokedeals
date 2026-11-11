@@ -1,10 +1,9 @@
 """Listing sources. Both expose `search(query) -> SearchResult` so the pipeline doesn't care which.
 
-- FixtureSource: reads a JSON file; lets us build and test everything before the eBay key arrives.
-- EbaySource:    eBay Browse API (OAuth client-credentials). Written from the API docs and NOT yet
-                 exercised against the live API -- expect small fixes when the key is approved.
-                 It pages through results (offset/limit) and reports how many matched in total, so a
-                 caller can tell "that is everything" from "that is the first N of many".
+- FixtureSource: reads a JSON file (for tests and the bundled samples).
+- EbaySource:    eBay Browse API (OAuth client credentials). It pages through results (offset/limit) and
+                 reports how many matched in total, so a caller can tell "that is everything" from
+                 "the first N of many".
 """
 from __future__ import annotations
 
@@ -140,8 +139,8 @@ class EbaySource:
         }
         zip_code = self.buyer_zip.strip()
         if re.fullmatch(r"\d{5}", zip_code):
-            # With a destination eBay prices "calculated" shipping (without one, 35% of listings have no
-            # cost). The value must be URL-encoded; the raw "country=US,zip=..." form is silently ignored.
+            # A destination lets eBay price "calculated" shipping. The value must be URL-encoded; the raw
+            # "country=US,zip=..." form is silently ignored.
             headers["X-EBAY-C-ENDUSERCTX"] = "contextualLocation=" + quote(f"country=US,zip={zip_code}", safe="")
         return headers
 
@@ -171,10 +170,10 @@ class EbaySource:
         return r.json()
 
     def get_item(self, item_id: str) -> ItemInfo:
-        """Is this listing still for sale, and what condition does the seller say it is?
+        """Is this listing still for sale, and what condition does the seller say?
 
-        A 404 means the item is gone (sold, ended or removed). Other errors raise, so a hiccup is never
-        mistaken for a sale.
+        A 404 means it is gone (sold, ended or removed). Other errors raise, so a hiccup is never mistaken for
+        a sale.
         """
         r = self._client.get(self._host + "/buy/browse/v1/item/" + quote(item_id, safe=""), headers=self._headers())
         self.calls += 1
@@ -184,8 +183,8 @@ class EbaySource:
         j = r.json()
         avail = (j.get("estimatedAvailabilities") or [{}])[0]
         aspects = {a.get("name"): a.get("value") for a in j.get("localizedAspects") or []}
-        # The listing page's "Card Condition" is a condition DESCRIPTOR; older listings carry it as an item
-        # specific instead, so look in both.
+        # The page's "Card Condition" is a condition DESCRIPTOR; older listings carry it as an item specific,
+        # so look in both.
         stated = next((v.get("content") for d in j.get("conditionDescriptors") or []
                        if d.get("name") == "Card Condition" for v in d.get("values") or []), None)
         language = aspects.get("Language")
@@ -199,8 +198,8 @@ class EbaySource:
         )
 
     def get_item_details(self, item_id: str) -> dict | None:
-        """Everything the listing popup shows: all photos, the seller's condition notes and the item specifics
-        (set, card number, rarity, finish, language). None when eBay no longer has the listing."""
+        """Everything the listing popup shows: all photos, the seller's condition notes and item specifics
+        (set, number, rarity, finish, language). None when eBay no longer has the listing."""
         r = self._client.get(self._host + "/buy/browse/v1/item/" + quote(item_id, safe=""), headers=self._headers())
         self.calls += 1
         if r.status_code == 404:
@@ -241,11 +240,10 @@ class EbaySource:
     def _label_conditions(self, query: str, listings: list[Listing], cap: int) -> dict[str, str]:
         """Which of `listings` the seller marked NM / LP / MP / HP.
 
-        eBay has the seller's "Card Condition" item specific but only exposes it as a FILTER, not on each
-        search result. So search once per condition (same query, newest first) and tag the IDs that come
-        back: about 5 calls per card instead of 1, and 96% of real raw listings carry a label. A listing
-        that matches several values keeps the worst. ("Not Specified" is a no-op filter: it returns
-        everything, so it is not used; unlabelled listings simply stay None.)
+        eBay only exposes the seller's "Card Condition" as a FILTER, not on each result. So search once per
+        condition (same query, newest first) and tag the IDs that come back: about 5 calls per card instead of 1,
+        and 96% of real raw listings get a label. A listing matching several values keeps the worst. ("Not
+        Specified" is a no-op filter, so it is not used; unlabelled listings stay None.)
         """
         wanted = {listing.id for listing in listings}
         labels: dict[str, str] = {}
@@ -268,11 +266,11 @@ class EbaySource:
         return labels
 
     def search_newest(self, query: str, is_known, max_pages: int = 3) -> SearchResult:
-        """Newest listings first, stopping at the first page that contains one we already know.
+        """Newest listings first, stopping at the first page with one we already know.
 
-        This is the cheap way to catch everything that is new since the last look: usually ONE call. Only
-        when a whole page is new (more than 200 listings appeared since last time) does it fetch another,
-        up to `max_pages`. `is_known(listing_id)` says whether a listing is already stored.
+        The cheap way to catch everything new since the last look: usually ONE call. Only if a whole page is new
+        (200+ appeared since last time) does it fetch more, up to `max_pages`. `is_known(listing_id)` says whether
+        a listing is already stored.
         """
         listings: list[Listing] = []
         seen: set[str] = set()
@@ -290,8 +288,8 @@ class EbaySource:
     def search(self, query: str, *, max_results: int | None = None, label: bool | None = None) -> SearchResult:
         """Fetch up to `max_results` listings (default: settings.ebay_max_listings_per_query).
 
-        `label` overrides settings.ebay_label_conditions: the background feed skips the 4 extra calls per
-        search and checks the few listings that look like deals with `get_item` instead.
+        `label` overrides settings.ebay_label_conditions: the background feed skips the 4 extra calls per search
+        and checks likely deals with `get_item` instead.
         """
         cap = min(max_results or self.s.ebay_max_listings_per_query, _API_RESULT_WINDOW)
         listings: list[Listing] = []

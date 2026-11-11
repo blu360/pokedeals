@@ -14,7 +14,7 @@ from pokedeals.tcgcsv import (
 from pokedeals.textnorm import local_key, name_key
 
 
-# ---- a miniature feed shaped like the real one ---------------------------------------------------
+# ---- a miniature feed shaped like the real one ----
 
 def product(pid, name, number, rarity="Rare"):
     ext = [{"name": "Rarity", "value": rarity}]
@@ -86,7 +86,7 @@ CARDS = [
 ]
 
 
-# ---- parsing -----------------------------------------------------------------------------------
+# ---- parsing ----
 
 @pytest.mark.parametrize("raw,expected", [
     ("021/128", ("21", 128)), ("4/102", ("4", 102)), ("TG01/TG30", ("TG1", 30)),
@@ -125,7 +125,7 @@ def test_subtypes_map_to_tcgdex_variant_keys():
     assert {p.variant for p in charizard.prices} == {"unlimited-holofoil", "1st-edition-holofoil"}
 
 
-# ---- matching ----------------------------------------------------------------------------------
+# ---- matching ----
 
 @pytest.fixture()
 def matched():
@@ -306,7 +306,7 @@ def test_set_with_no_evidence_is_not_mapped():
     assert matches == [] and groups == {}
 
 
-# ---- storing: the feed overrides TCGdex ---------------------------------------------------------
+# ---- storing: the feed overrides TCGdex ----
 
 @pytest.fixture()
 def conn(tmp_path):
@@ -368,7 +368,7 @@ def test_report_unpriced_after(conn):
     assert report.unpriced_after == 1                      # df-87 only
 
 
-# ---- migration ---------------------------------------------------------------------------------
+# ---- migration ----
 
 def test_old_database_gains_source_columns(tmp_path):
     import sqlite3
@@ -386,7 +386,7 @@ def test_old_database_gains_source_columns(tmp_path):
     assert c.execute("SELECT source FROM card_prices").fetchone()[0] == "tcgdex"   # existing rows are TCGdex's
 
 
-# ---- network: fetching the feed ------------------------------------------------------------------
+# ---- network: fetching the feed ----
 
 def feed_transport(fail_group=None, broken=False):
     def handler(request: httpx.Request) -> httpx.Response:
@@ -429,7 +429,7 @@ def test_one_failing_group_is_skipped_not_fatal():
     assert any("could not fetch 1 price groups" in m for m in messages)
 
 
-# ---- sync integration ----------------------------------------------------------------------------
+# ---- sync integration ----
 
 def tcgdex_transport():
     sets = {"base1": {"id": "base1", "name": "Base Set", "serie": {"id": "base", "name": "Base"},

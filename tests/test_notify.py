@@ -41,7 +41,7 @@ def configure(db_path, **channels):
     conn.close()
 
 
-# ---- configuration -----------------------------------------------------------------------------------
+# ---- configuration ----
 
 def test_defaults_notify_about_nothing_until_a_channel_is_set_up(db_path):
     conn = connect(db_path)
@@ -91,7 +91,7 @@ def test_the_environment_can_supply_a_secret(db_path, monkeypatch):
     assert credentials.secret("ntfy_topic") == "from-env"
 
 
-# ---- delivery ----------------------------------------------------------------------------------------
+# ---- delivery ----
 
 def test_each_channel_sends_what_its_service_expects(db_path):
     configure(db_path, discord={}, telegram={"chat_id": "42"}, ntfy={"server": "https://ntfy.example"})
@@ -144,7 +144,7 @@ def test_email_goes_through_the_configured_server(db_path, monkeypatch):
     assert sent == [("connect", "mail.example", 587), "starttls", ("login", "me", "pw"), ("msg", "b@y.io", "Subject here")]
 
 
-# ---- when a notification goes out ----------------------------------------------------------------------
+# ---- when a notification goes out ----
 
 def announce(db_path, row, first_seen=None, **kw):
     conn = connect(db_path)
@@ -187,7 +187,7 @@ def test_several_deals_become_one_message(db_path):
     assert one[0].startswith("Steal: Charizard") and one[2] == "https://www.ebay.com/itm/1"
 
 
-# ---- the page's endpoints --------------------------------------------------------------------------------
+# ---- the page's endpoints ----
 
 def test_endpoints_save_show_and_test(db_path, monkeypatch):
     client = TestClient(create_app(Settings(db_path=db_path), conditions=None))

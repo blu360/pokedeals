@@ -1,15 +1,15 @@
 """The live feed: keep searching eBay in the background and remember what it finds.
 
 Each cycle:
-  1. search eBay (newest first) with a set of broad queries, your watchlist cards and a few set names,
-     and store every listing in the database (`listing_store`);
-  2. value everything stored, so deals build up across cycles instead of vanishing on the next refresh;
-  3. check the listings that look like deals with eBay's getItem: it gives the seller's stated condition
-     and tells us whether the listing is still for sale (sold ones are removed);
-  4. forget what is no longer worth keeping: ended auctions, old non-deals, and the oldest deals once there
-     are more than `feed_max_deals` (newer deals push older ones out).
+  1. search eBay (newest first) with broad queries, your watchlist and a few set names, and store every
+     listing (`listing_store`);
+  2. value everything stored, so deals build up across cycles;
+  3. check likely deals with eBay's getItem: it gives the seller's stated condition and whether the listing
+     is still for sale;
+  4. forget what is no longer worth keeping: ended auctions, old non-deals, and the oldest deals beyond
+     `feed_max_deals`.
 
-The web UI reads the latest snapshot, which is instant, rather than searching eBay while you wait.
+The web UI reads the latest snapshot (instant) instead of searching eBay while you wait.
 """
 from __future__ import annotations
 
@@ -102,7 +102,7 @@ class Feed:
             "prices_checked_at": None,
         }
 
-    # ---- lifecycle ------------------------------------------------------------------------------
+    # ---- lifecycle ----
     def start(self) -> None:
         if self._thread is not None:
             return
@@ -162,10 +162,9 @@ class Feed:
     def fast_wait(self, new_found: int, elapsed: float) -> float:
         """Seconds until the next fast-lane check.
 
-        Aim for about `feed_fast_target` new listings per call, since one call reads up to 200: when eBay is busy
-        (lots of new listings per minute) the lane speeds up, so a deal is seen sooner at no extra cost per listing;
-        when it is quiet the lane slows down rather than spend calls on near-empty pages. If today's search calls are
-        running ahead of an even pace, it slows to the maximum so the budget lasts the whole day."""
+        Aim for about `feed_fast_target` new listings per call (one call reads up to 200): when eBay is busy the
+        lane speeds up, when quiet it slows rather than spend calls on near-empty pages. If today's search calls
+        run ahead of an even pace, it slows to the maximum so the budget lasts all day."""
         s = self.s
         rate = new_found / max(elapsed / 60, 0.25)                 # new listings per minute, lately
         wait = s.feed_fast_target / max(rate, 1) * 60
@@ -210,8 +209,8 @@ class Feed:
     def refresh_prices_if_stale(self) -> bool:
         """Pull a newer TCGplayer price day if the feed has published one since ours. True when prices changed.
 
-        The feed (tcgcsv.com) publishes once a day, so this is one tiny request an hour and a few seconds of
-        work on the day it has news. Without it the prices only moved when someone ran `sync` or `prices`."""
+        The feed publishes once a day, so this is one tiny request an hour, plus a few seconds of work on the
+        day it has news."""
         conn = connect(self.s.db_path)
         try:
             self.status["prices_checked_at"] = datetime.now(timezone.utc).isoformat()
@@ -236,17 +235,17 @@ class Feed:
         finally:
             conn.close()
 
-    # ---- reading --------------------------------------------------------------------------------
+    # ---- reading ----
     def browse_cutoff(self) -> str:
-        """Listings first seen before this (an ISO time; '' = no limit) are kept for searching but not browsed. They are
-        most likely sold by now, so they are neither shown nor spent eBay checks on."""
+        """Listings first seen before this (an ISO time; '' = no limit) are kept for searching but not browsed:
+        they are most likely sold, so they are not shown or given eBay checks."""
         if self.s.feed_browse_hours <= 0:
             return ""
         return (datetime.now(timezone.utc) - timedelta(hours=self.s.feed_browse_hours)).isoformat()
 
     def split_browsable(self, rows: list[ScanRow], first_seen: Callable[[str], str | None]) -> tuple[list[ScanRow], list[ScanRow]]:
-        """(fresh, older): older rows were first seen before the browse cutoff. A row with no known first-seen time
-        counts as fresh. The one place that decides what can be seen, for the list and for the item checks alike."""
+        """(fresh, older): older rows were first seen before the browse cutoff; a row with no first-seen time
+        counts as fresh. The one place that decides what can be seen, for the list and the item checks."""
         cutoff = self.browse_cutoff()
         fresh, older = [], []
         for r in rows:
@@ -270,7 +269,7 @@ class Feed:
                 "deals": sum(r.verdict.is_deal for r in snap.rows),
                 "built_at": snap.built_at}
 
-    # ---- one cycle ------------------------------------------------------------------------------
+    # ---- one cycle ----
     def _queries(self, conn) -> list[str]:
         queries = list(wl.watch_queries(conn, self.s.max_watchlist_queries))
         queries += self.s.feed_queries
@@ -285,9 +284,9 @@ class Feed:
                 set_setting(conn, "feed_set_cursor", str((cursor + n) % len(names)))
         return list(dict.fromkeys(q for q in queries if q))
 
-    # Two daily tallies, because searching and checking compete for the same eBay allowance: searches may use
-    # 60% of the budget (they run on a fixed schedule), the sold/condition checks the other 40%, and the checks
-    # are paced across the day so a burst of new listings cannot use them all up in the first hour.
+    # Two daily tallies, because searching and checking share one eBay allowance: searches may use
+    # `feed_search_share` of the budget and item checks the rest, paced across the day so a burst of new
+    # listings cannot use them all up in the first hour.
     def _key(self, kind: str) -> str:
         return f"feed_calls:{datetime.now(timezone.utc):%Y-%m-%d}:{kind}"
 
@@ -345,10 +344,10 @@ class Feed:
             conn.close()
 
     def fast_once(self) -> int:
-        """Catch what was listed since the last look: newest-first, stopping at the first known listing.
+        """Catch what was listed since the last look: newest first, stopping at the first known listing.
 
-        Usually one eBay call. New listings are valued and the likeliest deals checked straight away, so a
-        fresh deal shows up within about a minute of being listed. Returns how many listings were new."""
+        Usually one eBay call. New listings are valued and likely deals checked at once, so a deal shows up
+        within about a minute. Returns how many were new."""
         conn = connect(self.s.db_path)
         try:
             self.status["calls_today"] = self._used(conn, "search") + self._used(conn, "verify")
@@ -437,14 +436,13 @@ class Feed:
                 first: set[str] | None = None) -> bool:
         """getItem-check listings, most important first. True when anything changed.
 
-        1. Deals nobody has checked yet. They are on screen with a guessed condition until we ask, so they are
-           never held back by the daily pacing (only by the day's overall checking budget).
+        1. Deals nobody has checked yet: on screen with a guessed condition until we ask, so never held back by
+           daily pacing (only by the day's overall budget).
         2. Smaller new deals, then 3. listings that could become deals if the seller's condition is better than
-           the one we assumed. These are paced through the day.
+           assumed. These are paced through the day.
 
-        Deals are not re-checked for "has it sold?": that was the biggest recurring cost for the least value, and a
-        deal that has sold is only a click away from being found out (opening it checks live). Old deals expire
-        instead (`feed_max_age_days`).
+        Deals are not re-checked for "has it sold?": that was the biggest cost for the least value, and opening a
+        listing checks live. Old deals expire instead (`feed_max_age_days`).
         """
         limit = self.s.feed_verify_per_cycle if limit is None else limit
         rows, _ = self.split_browsable(rows, lambda i: self._pending.get(i, (None, None))[0])      # only what can be seen
@@ -456,8 +454,8 @@ class Feed:
             return d.fair_value - d.total_cost
 
         def worth_asking_now(r: ScanRow) -> bool:
-            # Asking the seller can only matter when the title leaves the condition open, or when the deal is
-            # big enough that a wrong guess is costly (a Steal). And a few dollars of saving is not worth a call.
+            # Asking the seller only matters when the title leaves the condition open, or the deal is big enough
+            # that a wrong guess is costly (a Steal). A few dollars of saving is not worth a call.
             return (r.parsed.condition is None or r.verdict.category == "steal") and saving(r) >= self.s.feed_verify_urgent_savings
 
         unverified = [r for r in rows if r.verdict.is_deal and checked(r) is None]
@@ -465,8 +463,8 @@ class Feed:
         routine = [r for r in unverified if not worth_asking_now(r)]
         for group in (urgent, routine):
             group.sort(key=lambda r: ((r.listing.id not in first) if first else False, -saving(r)))   # fresh, then biggest
-        # listings never checked that could be deals if the seller's condition is better than assumed:
-        # the title gives no condition, and the card is at least min_discount under its Near Mint price.
+        # listings never checked that could become deals if the seller's condition is better than assumed:
+        # the title gives no condition and the price is at least min_discount under Near Mint.
         floor = 1 - self.s.min_discount
         candidates = [r for r in rows if checked(r) is None and not r.verdict.is_deal and not r.verdict.suspicious
                       and r.parsed.condition is None and r.listing.card_condition is None     # only a guess can improve

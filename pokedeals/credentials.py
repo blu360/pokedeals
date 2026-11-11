@@ -1,14 +1,13 @@
 """Where the eBay keys come from and where they are kept.
 
-Looked up in this order, so the most deliberate choice wins:
-  1. environment variables EBAY_CLIENT_ID / EBAY_CLIENT_SECRET (and EBAY_BUYER_ZIP), or a file named by
-     EBAY_CLIENT_ID_FILE / EBAY_CLIENT_SECRET_FILE (Docker and Kubernetes secrets mount keys this way);
-  2. the operating system's keyring (Windows Credential Manager, macOS Keychain, Secret Service on Linux),
-     where the first-run prompt saves them;
-  3. a private file in the data folder (owner-only permissions), used when there is no keyring;
+Looked up in this order:
+  1. environment variables EBAY_CLIENT_ID / EBAY_CLIENT_SECRET, or files named by EBAY_CLIENT_ID_FILE /
+     EBAY_CLIENT_SECRET_FILE (how Docker secrets are mounted);
+  2. the operating system's keyring, where the first-run prompt saves them;
+  3. a private owner-only file in the data folder, when there is no keyring;
   4. keyset.txt, the original format (see config.py).
 
-Nothing here ever prints or logs a value.
+Nothing here prints or logs a value.
 """
 from __future__ import annotations
 
@@ -109,7 +108,7 @@ def forget() -> None:
     credentials_file().unlink(missing_ok=True)
 
 
-# ---- other secrets (SMTP password, webhook addresses, bot tokens, ntfy topic) --------------------------
+# ---- other secrets (SMTP password, webhook addresses, bot tokens, ntfy topic) ----
 # Same idea as the eBay keys: POKEDEALS_<NAME> in the environment (or ..._FILE), else the keyring, else a private file.
 
 def secrets_file() -> Path:

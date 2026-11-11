@@ -1,10 +1,10 @@
 """Sync the local card DB (cards + TCGplayer prices) from the TCGdex REST API.
 
-We talk to the REST API directly rather than through `tcgdex-sdk`: the SDK's Card model has no
-`pricing` field, so it would silently drop the TCGplayer prices we need.
+We call the REST API directly rather than `tcgdex-sdk`: the SDK's Card model has no `pricing` field, so it
+would drop the TCGplayer prices we need.
 
-A full cold sync is ~24k single-card requests (~8 min at 20 concurrent). Prices only change daily,
-so run it once a day; `--set` limits it to specific sets.
+A full cold sync is ~24k single-card requests (~8 min at 20 concurrent). Prices change daily; `--set`
+limits it to specific sets.
 """
 from __future__ import annotations
 
@@ -148,7 +148,7 @@ async def sync(
             stats["priced"] += sum(1 for c in cards if c.get("pricing"))
             progress(f"[{n}/{len(todo)}] {set_id:<12} {len(cards):>4} cards  ({time.time() - started:.0f}s)")
 
-    # Re-storing a card above replaces its prices with TCGdex's, so lay the TCGplayer feed back over them.
+    # Re-storing a card replaces its prices with TCGdex's, so lay the TCGplayer feed back over them.
     if price_feed:
         try:
             report = await refresh_prices(conn, client=feed_client, progress=progress)
